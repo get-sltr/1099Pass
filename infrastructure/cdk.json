@@ -1,0 +1,10 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/1099pass.ts",
+  "watch": {
+    "include": ["**"],
+    "exclude": ["node_modules", "cdk.out", "dist", "**/*.js", "**/*.d.ts"]
+  },
+  "context": {
+    "environment": "dev"
+  }
+}

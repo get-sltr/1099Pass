@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "1099Pass",
+    "slug": "1099pass",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "1099pass",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1B2B5E"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sltrdigital.1099pass"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#1B2B5E"
+      },
+      "package": "com.sltrdigital.pass1099"
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

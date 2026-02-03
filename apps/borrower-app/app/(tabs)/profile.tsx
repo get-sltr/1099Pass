@@ -1,164 +1,283 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+/**
+ * Profile Screen
+ * View and edit user profile
+ */
+
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { router } from 'expo-router';
-import { useAuthStore } from '@/store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Button, Card, Input, Avatar, useToast } from '../../src/components/ui';
+import { useAuthStore } from '../../src/store';
+import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
+  const { showToast } = useToast();
 
-  const handleLogout = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          router.replace('/(auth)/login');
-        },
-      },
-    ]);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phone: '',
+  });
+
+  const handleSave = () => {
+    // TODO: Save profile changes
+    showToast({
+      type: 'success',
+      title: 'Profile updated',
+      message: 'Your changes have been saved',
+    });
+    setIsEditing(false);
   };
 
-  const menuItems = [
-    { label: 'Personal Information', icon: '👤' },
-    { label: 'Linked Accounts', icon: '🔗' },
-    { label: 'Subscription', icon: '⭐' },
-    { label: 'Security', icon: '🔒' },
-    { label: 'Notifications', icon: '🔔' },
-    { label: 'Help & Support', icon: '❓' },
-  ];
-
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user?.first_name?.[0] || '?'}
-            {user?.last_name?.[0] || ''}
-          </Text>
-        </View>
-        <Text style={styles.name}>
-          {user?.first_name || 'User'} {user?.last_name || ''}
-        </Text>
-        <Text style={styles.email}>{user?.email || 'user@example.com'}</Text>
-        <View style={styles.tierBadge}>
-          <Text style={styles.tierText}>
-            {user?.subscription_tier || 'FREE'} Plan
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.menu}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity key={index} style={styles.menuItem}>
-            <Text style={styles.menuIcon}>{item.icon}</Text>
-            <Text style={styles.menuLabel}>{item.label}</Text>
-            <Text style={styles.menuArrow}>→</Text>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + spacing[4], paddingBottom: insets.bottom + spacing[4] },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-        ))}
-      </View>
+          <Text style={styles.title}>Profile</Text>
+          <TouchableOpacity
+            onPress={() => setIsEditing(!isEditing)}
+            style={styles.editButton}
+          >
+            <Text style={styles.editButtonText}>
+              {isEditing ? 'Cancel' : 'Edit'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Sign Out</Text>
-      </TouchableOpacity>
+        {/* Avatar section */}
+        <View style={styles.avatarSection}>
+          <Avatar name={user?.firstName || 'U'} size="2xl" />
+          {isEditing && (
+            <TouchableOpacity style={styles.changePhotoButton}>
+              <Ionicons name="camera-outline" size={16} color={colors.primary} />
+              <Text style={styles.changePhotoText}>Change Photo</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
-      <Text style={styles.version}>1099Pass v1.0.0</Text>
-    </ScrollView>
+        {/* Profile info */}
+        <Card variant="outlined" style={styles.infoCard}>
+          {isEditing ? (
+            <>
+              <Input
+                label="First Name"
+                value={formData.firstName}
+                onChangeText={(v) => setFormData((prev) => ({ ...prev, firstName: v }))}
+              />
+              <Input
+                label="Last Name"
+                value={formData.lastName}
+                onChangeText={(v) => setFormData((prev) => ({ ...prev, lastName: v }))}
+              />
+              <Input
+                label="Email"
+                value={formData.email}
+                onChangeText={(v) => setFormData((prev) => ({ ...prev, email: v }))}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <Input
+                label="Phone"
+                value={formData.phone}
+                onChangeText={(v) => setFormData((prev) => ({ ...prev, phone: v }))}
+                keyboardType="phone-pad"
+              />
+            </>
+          ) : (
+            <>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Name</Text>
+                <Text style={styles.infoValue}>
+                  {user?.firstName} {user?.lastName}
+                </Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Email</Text>
+                <Text style={styles.infoValue}>{user?.email}</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Phone</Text>
+                <Text style={styles.infoValue}>Not set</Text>
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Member since</Text>
+                <Text style={styles.infoValue}>January 2024</Text>
+              </View>
+            </>
+          )}
+        </Card>
+
+        {isEditing && (
+          <Button
+            title="Save Changes"
+            onPress={handleSave}
+            variant="primary"
+            size="large"
+            fullWidth
+            style={styles.saveButton}
+          />
+        )}
+
+        {/* Verification status */}
+        {!isEditing && (
+          <Card variant="mint" style={styles.verificationCard}>
+            <View style={styles.verificationHeader}>
+              <Ionicons name="shield-checkmark" size={24} color={colors.success} />
+              <Text style={styles.verificationTitle}>Identity Verified</Text>
+            </View>
+            <Text style={styles.verificationText}>
+              Your identity was verified on January 15, 2024
+            </Text>
+          </Card>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.background,
   },
-  profileHeader: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+
+  scrollView: {
+    flex: 1,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#1E3A5F',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
+
+  content: {
+    paddingHorizontal: spacing[4],
   },
-  avatarText: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  email: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  tierBadge: {
-    marginTop: 16,
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  tierText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  menu: {
-    backgroundColor: '#FFFFFF',
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  menuItem: {
+
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    justifyContent: 'space-between',
+    marginBottom: spacing[6],
   },
-  menuIcon: {
-    fontSize: 20,
-    marginRight: 16,
-  },
-  menuLabel: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-  },
-  menuArrow: {
-    fontSize: 16,
-    color: '#9CA3AF',
-  },
-  logoutButton: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 12,
+
+  backButton: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -spacing[2],
   },
-  logoutText: {
-    fontSize: 16,
+
+  title: {
+    ...textStyles.h3,
+    color: colors.textPrimary,
+  },
+
+  editButton: {
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+  },
+
+  editButtonText: {
+    ...textStyles.body,
+    color: colors.primary,
     fontWeight: '600',
-    color: '#DC2626',
   },
-  version: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginBottom: 32,
+
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: spacing[6],
+  },
+
+  changePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing[3],
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+  },
+
+  changePhotoText: {
+    ...textStyles.bodySmall,
+    color: colors.primary,
+    fontWeight: '500',
+    marginLeft: spacing[1],
+  },
+
+  infoCard: {
+    marginBottom: spacing[4],
+  },
+
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing[3],
+  },
+
+  infoLabel: {
+    ...textStyles.body,
+    color: colors.textSecondary,
+  },
+
+  infoValue: {
+    ...textStyles.body,
+    color: colors.textPrimary,
+    fontWeight: '500',
+  },
+
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+
+  saveButton: {
+    marginBottom: spacing[6],
+  },
+
+  verificationCard: {
+    marginBottom: spacing[4],
+  },
+
+  verificationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+  },
+
+  verificationTitle: {
+    ...textStyles.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    marginLeft: spacing[2],
+  },
+
+  verificationText: {
+    ...textStyles.bodySmall,
+    color: colors.textSecondary,
   },
 });

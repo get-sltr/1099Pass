@@ -1,102 +1,306 @@
+/**
+ * Forgot Password Screen
+ * Password reset flow
+ */
+
 import { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  TouchableOpacity,
 } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { Button, Input, useToast } from '../../src/components/ui';
+import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
+
+type Step = 'email' | 'code' | 'password' | 'success';
 
 export default function ForgotPasswordScreen() {
-  const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isEmailSent, setIsEmailSent] = useState(false);
+  const insets = useSafeAreaInsets();
+  const { showToast } = useToast();
 
-  const handleResetPassword = async () => {
-    if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
+  const [step, setStep] = useState<Step>('email');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSendCode = async () => {
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Please enter a valid email');
       return;
     }
 
-    setIsSubmitting(true);
+    setIsLoading(true);
+    setError('');
+
     try {
-      // TODO: Implement password reset API call
-      setIsEmailSent(true);
-    } catch {
-      Alert.alert('Error', 'Failed to send reset email. Please try again.');
+      // TODO: Call API to send reset code
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      setStep('code');
+      showToast({
+        type: 'success',
+        title: 'Code sent!',
+        message: 'Check your email for the reset code',
+      });
+    } catch (err) {
+      setError('Failed to send code. Please try again.');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
-  if (isEmailSent) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.successContainer}>
-          <Text style={styles.successIcon}>✓</Text>
-          <Text style={styles.successTitle}>Check your email</Text>
-          <Text style={styles.successText}>
-            We've sent password reset instructions to {email}
-          </Text>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => router.replace('/(auth)/login')}
-          >
-            <Text style={styles.buttonText}>Back to Sign In</Text>
-          </TouchableOpacity>
-        </View>
+  const handleVerifyCode = async () => {
+    if (code.length < 6) {
+      setError('Please enter the 6-digit code');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // TODO: Call API to verify code
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      setStep('password');
+    } catch (err) {
+      setError('Invalid code. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      // TODO: Call API to reset password
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      setStep('success');
+    } catch (err) {
+      setError('Failed to reset password. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const renderEmailStep = () => (
+    <>
+      <View style={styles.header}>
+        <Text style={styles.title}>Reset Password</Text>
+        <Text style={styles.subtitle}>
+          Enter your email and we'll send you a code to reset your password
+        </Text>
       </View>
-    );
-  }
+
+      <View style={styles.form}>
+        <Input
+          label="Email"
+          placeholder="john@example.com"
+          value={email}
+          onChangeText={(v) => {
+            setEmail(v);
+            setError('');
+          }}
+          error={error}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+          leftIcon="mail-outline"
+          required
+        />
+      </View>
+
+      <Button
+        title="Send Reset Code"
+        onPress={handleSendCode}
+        variant="primary"
+        size="large"
+        fullWidth
+        loading={isLoading}
+      />
+    </>
+  );
+
+  const renderCodeStep = () => (
+    <>
+      <View style={styles.header}>
+        <Text style={styles.title}>Enter Code</Text>
+        <Text style={styles.subtitle}>
+          We sent a 6-digit code to {email}
+        </Text>
+      </View>
+
+      <View style={styles.form}>
+        <Input
+          label="Reset Code"
+          placeholder="000000"
+          value={code}
+          onChangeText={(v) => {
+            setCode(v.replace(/\D/g, '').slice(0, 6));
+            setError('');
+          }}
+          error={error}
+          keyboardType="number-pad"
+          maxLength={6}
+          leftIcon="keypad-outline"
+          required
+        />
+
+        <TouchableOpacity onPress={handleSendCode} style={styles.resendButton}>
+          <Text style={styles.resendText}>Didn't receive a code? Resend</Text>
+        </TouchableOpacity>
+      </View>
+
+      <Button
+        title="Verify Code"
+        onPress={handleVerifyCode}
+        variant="primary"
+        size="large"
+        fullWidth
+        loading={isLoading}
+      />
+    </>
+  );
+
+  const renderPasswordStep = () => (
+    <>
+      <View style={styles.header}>
+        <Text style={styles.title}>New Password</Text>
+        <Text style={styles.subtitle}>
+          Create a strong password to secure your account
+        </Text>
+      </View>
+
+      <View style={styles.form}>
+        <Input
+          label="New Password"
+          placeholder="Enter new password"
+          value={password}
+          onChangeText={(v) => {
+            setPassword(v);
+            setError('');
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+          leftIcon="lock-closed-outline"
+          showPasswordToggle
+          required
+        />
+
+        <Input
+          label="Confirm Password"
+          placeholder="Re-enter new password"
+          value={confirmPassword}
+          onChangeText={(v) => {
+            setConfirmPassword(v);
+            setError('');
+          }}
+          error={error}
+          secureTextEntry
+          autoCapitalize="none"
+          leftIcon="lock-closed-outline"
+          showPasswordToggle
+          required
+        />
+      </View>
+
+      <Button
+        title="Reset Password"
+        onPress={handleResetPassword}
+        variant="primary"
+        size="large"
+        fullWidth
+        loading={isLoading}
+      />
+    </>
+  );
+
+  const renderSuccessStep = () => (
+    <View style={styles.successContainer}>
+      <View style={styles.successIcon}>
+        <Ionicons name="checkmark-circle" size={64} color={colors.success} />
+      </View>
+
+      <Text style={styles.successTitle}>Password Reset!</Text>
+      <Text style={styles.successSubtitle}>
+        Your password has been successfully reset. You can now sign in with your new password.
+      </Text>
+
+      <Button
+        title="Sign In"
+        onPress={() => router.replace('/(auth)/login')}
+        variant="primary"
+        size="large"
+        fullWidth
+        style={styles.successButton}
+      />
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.header}>
-        <Text style={styles.logo}>1099Pass</Text>
-        <Text style={styles.title}>Reset Password</Text>
-        <Text style={styles.subtitle}>
-          Enter your email and we'll send you instructions to reset your
-          password.
-        </Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="your@email.com"
-        />
-
-        <TouchableOpacity
-          style={[styles.button, isSubmitting && styles.buttonDisabled]}
-          onPress={handleResetPassword}
-          disabled={isSubmitting}
-        >
-          <Text style={styles.buttonText}>
-            {isSubmitting ? 'Sending...' : 'Send Reset Link'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.footer}>
-        <Link href="/(auth)/login" asChild>
-          <TouchableOpacity>
-            <Text style={styles.footerLink}>Back to Sign In</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + spacing[4], paddingBottom: insets.bottom + spacing[4] },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Back button */}
+        {step !== 'success' && (
+          <TouchableOpacity
+            onPress={() => {
+              if (step === 'email') {
+                router.back();
+              } else if (step === 'code') {
+                setStep('email');
+              } else if (step === 'password') {
+                setStep('code');
+              }
+            }}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-        </Link>
-      </View>
+        )}
+
+        {step === 'email' && renderEmailStep()}
+        {step === 'code' && renderCodeStep()}
+        {step === 'password' && renderPasswordStep()}
+        {step === 'success' && renderSuccessStep()}
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -104,92 +308,84 @@ export default function ForgotPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
-  header: {
-    marginTop: 80,
-    marginBottom: 32,
-  },
-  logo: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1E3A5F',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111827',
-    marginTop: 24,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 8,
-    lineHeight: 24,
-  },
-  form: {
+
+  scrollView: {
     flex: 1,
   },
-  label: {
-    fontSize: 14,
+
+  scrollContent: {
+    paddingHorizontal: spacing[6],
+    flexGrow: 1,
+  },
+
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -spacing[2],
+    marginBottom: spacing[2],
+  },
+
+  header: {
+    marginBottom: spacing[8],
+  },
+
+  title: {
+    ...textStyles.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing[2],
+  },
+
+  subtitle: {
+    ...textStyles.body,
+    color: colors.textSecondary,
+  },
+
+  form: {
+    marginBottom: spacing[6],
+  },
+
+  resendButton: {
+    alignSelf: 'center',
+    paddingVertical: spacing[2],
+  },
+
+  resendText: {
+    ...textStyles.bodySmall,
+    color: colors.primary,
     fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
   },
-  input: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  button: {
-    backgroundColor: '#1E3A5F',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    alignItems: 'center',
-    paddingBottom: 32,
-  },
-  footerLink: {
-    color: '#1E3A5F',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
+  // Success state
   successContainer: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    justifyContent: 'center',
+    paddingVertical: spacing[8],
   },
+
   successIcon: {
-    fontSize: 48,
-    color: '#10B981',
-    marginBottom: 24,
+    marginBottom: spacing[6],
   },
+
   successTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  successText: {
-    fontSize: 16,
-    color: '#6B7280',
+    ...textStyles.h2,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
+    marginBottom: spacing[3],
+  },
+
+  successSubtitle: {
+    ...textStyles.body,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    maxWidth: 300,
+  },
+
+  successButton: {
+    marginTop: spacing[8],
   },
 });

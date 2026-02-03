@@ -1,37 +1,97 @@
+/**
+ * Login Screen
+ * Existing user authentication
+ */
+
 import { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
   StyleSheet,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
+  TouchableOpacity,
 } from 'react-native';
-import { Link, router } from 'expo-router';
-import { useAuthStore } from '@/store';
+import { router } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { Button, Input, useToast } from '../../src/components/ui';
+import { useAuthStore } from '../../src/store';
+import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
+  const { showToast } = useToast();
+  const { login, isLoading } = useAuthStore();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const login = useAuthStore((state) => state.login);
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [hasBiometrics, setHasBiometrics] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter email and password');
-      return;
+  // Check for biometric support
+  useState(() => {
+    LocalAuthentication.hasHardwareAsync().then(setHasBiometrics);
+  });
+
+  const validateForm = (): boolean => {
+    const newErrors: typeof errors = {};
+
+    if (!email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      newErrors.email = 'Please enter a valid email';
     }
 
-    setIsSubmitting(true);
+    if (!password) {
+      newErrors.password = 'Password is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleLogin = async () => {
+    if (!validateForm()) return;
+
     try {
       await login(email, password);
-      router.replace('/(tabs)/home');
-    } catch {
-      Alert.alert('Login Failed', 'Invalid email or password');
-    } finally {
-      setIsSubmitting(false);
+
+      showToast({
+        type: 'success',
+        title: 'Welcome back!',
+        message: 'Loading your income profile...',
+      });
+
+      // Navigation is handled by the root index based on auth state
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Login failed',
+        message: error instanceof Error ? error.message : 'Please check your credentials',
+      });
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Sign in to 1099Pass',
+        fallbackLabel: 'Use password',
+      });
+
+      if (result.success) {
+        // In a real app, we would use stored credentials or a biometric token
+        showToast({
+          type: 'info',
+          title: 'Biometric login',
+          message: 'Please enter your credentials this time to enable biometric login',
+        });
+      }
+    } catch (error) {
+      console.error('Biometric auth error:', error);
     }
   };
 
@@ -40,57 +100,119 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.header}>
-        <Text style={styles.logo}>1099Pass</Text>
-        <Text style={styles.subtitle}>Your gig economy financial passport</Text>
-      </View>
-
-      <View style={styles.form}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          placeholder="your@email.com"
-        />
-
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholder="••••••••"
-        />
-
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + spacing[4], paddingBottom: insets.bottom + spacing[4] },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Back button */}
         <TouchableOpacity
-          style={[styles.button, isSubmitting && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={isSubmitting}
+          onPress={() => router.back()}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
         >
-          <Text style={styles.buttonText}>
-            {isSubmitting ? 'Signing in...' : 'Sign In'}
-          </Text>
+          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
-        <Link href="/(auth)/forgot-password" asChild>
-          <TouchableOpacity style={styles.link}>
-            <Text style={styles.linkText}>Forgot password?</Text>
-          </TouchableOpacity>
-        </Link>
-      </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>
+            Sign in to continue building your income story
+          </Text>
+        </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Don't have an account?</Text>
-        <Link href="/(auth)/register" asChild>
-          <TouchableOpacity>
-            <Text style={styles.footerLink}>Sign up</Text>
+        {/* Form */}
+        <View style={styles.form}>
+          <Input
+            label="Email"
+            placeholder="john@example.com"
+            value={email}
+            onChangeText={(v) => {
+              setEmail(v);
+              if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+            }}
+            error={errors.email}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="email"
+            leftIcon="mail-outline"
+            required
+          />
+
+          <Input
+            label="Password"
+            placeholder="Enter your password"
+            value={password}
+            onChangeText={(v) => {
+              setPassword(v);
+              if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+            }}
+            error={errors.password}
+            secureTextEntry
+            autoCapitalize="none"
+            autoComplete="password"
+            leftIcon="lock-closed-outline"
+            showPasswordToggle
+            required
+          />
+
+          {/* Forgot password link */}
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/forgot-password')}
+            style={styles.forgotPassword}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </TouchableOpacity>
-        </Link>
-      </View>
+        </View>
+
+        {/* Login button */}
+        <View style={styles.submitContainer}>
+          <Button
+            title="Sign In"
+            onPress={handleLogin}
+            variant="primary"
+            size="large"
+            fullWidth
+            loading={isLoading}
+            disabled={isLoading}
+          />
+
+          {/* Biometric login */}
+          {hasBiometrics && (
+            <TouchableOpacity
+              style={styles.biometricButton}
+              onPress={handleBiometricLogin}
+              accessibilityLabel="Sign in with biometrics"
+            >
+              <View style={styles.biometricIcon}>
+                <Ionicons name="finger-print" size={24} color={colors.primary} />
+              </View>
+              <Text style={styles.biometricText}>Sign in with Face ID / Touch ID</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Divider */}
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Sign up prompt */}
+          <View style={styles.signupPrompt}>
+            <Text style={styles.signupPromptText}>New to 1099Pass? </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+              <Text style={styles.signupLink}>Create Account</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -98,76 +220,119 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
-  header: {
-    marginTop: 80,
-    marginBottom: 48,
-  },
-  logo: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1E3A5F',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 8,
-  },
-  form: {
+
+  scrollView: {
     flex: 1,
   },
-  label: {
-    fontSize: 14,
+
+  scrollContent: {
+    paddingHorizontal: spacing[6],
+    flexGrow: 1,
+  },
+
+  backButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -spacing[2],
+    marginBottom: spacing[2],
+  },
+
+  header: {
+    marginBottom: spacing[8],
+  },
+
+  title: {
+    ...textStyles.h2,
+    color: colors.textPrimary,
+    marginBottom: spacing[2],
+  },
+
+  subtitle: {
+    ...textStyles.body,
+    color: colors.textSecondary,
+  },
+
+  form: {
+    marginBottom: spacing[4],
+  },
+
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    paddingVertical: spacing[2],
+  },
+
+  forgotPasswordText: {
+    ...textStyles.bodySmall,
+    color: colors.primary,
     fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
   },
-  input: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
+
+  submitContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    marginTop: spacing[4],
   },
-  button: {
-    backgroundColor: '#1E3A5F',
-    borderRadius: 8,
-    padding: 16,
+
+  biometricButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    paddingVertical: spacing[4],
+    marginTop: spacing[4],
   },
-  buttonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  link: {
+
+  biometricIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.mintSoft,
     alignItems: 'center',
-    marginTop: 16,
+    justifyContent: 'center',
+    marginRight: spacing[3],
   },
-  linkText: {
-    color: '#1E3A5F',
-    fontSize: 14,
+
+  biometricText: {
+    ...textStyles.body,
+    color: colors.primary,
+    fontWeight: '500',
   },
-  footer: {
+
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing[6],
+  },
+
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+
+  dividerText: {
+    ...textStyles.caption,
+    color: colors.textSecondary,
+    paddingHorizontal: spacing[4],
+  },
+
+  signupPrompt: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 32,
+    marginBottom: spacing[4],
   },
-  footerText: {
-    color: '#6B7280',
-    fontSize: 14,
+
+  signupPromptText: {
+    ...textStyles.body,
+    color: colors.textSecondary,
   },
-  footerLink: {
-    color: '#1E3A5F',
-    fontSize: 14,
+
+  signupLink: {
+    ...textStyles.body,
+    color: colors.primary,
     fontWeight: '600',
-    marginLeft: 4,
   },
 });

@@ -58,6 +58,38 @@ export function handleError(error: unknown): APIGatewayProxyResult {
   };
 }
 
+/**
+ * Error handler for use within handlers (non-wrapper version)
+ * Returns a properly formatted API response with request ID
+ */
+export function errorHandler(error: Error, requestId: string): APIGatewayProxyResult {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Request-Id': requestId,
+  };
+
+  if (error instanceof AppError) {
+    return {
+      statusCode: error.statusCode,
+      headers,
+      body: JSON.stringify({
+        error: { code: error.code, message: error.message },
+        requestId,
+      }),
+    };
+  }
+
+  console.error('Unhandled error:', error, 'requestId:', requestId);
+  return {
+    statusCode: 500,
+    headers,
+    body: JSON.stringify({
+      error: { code: 'INTERNAL_ERROR', message: 'Internal server error' },
+      requestId,
+    }),
+  };
+}
+
 type HandlerFn = (event: APIGatewayProxyEvent, context: Context) => Promise<APIGatewayProxyResult>;
 
 export function withErrorHandler(handler: HandlerFn): APIGatewayProxyHandler {

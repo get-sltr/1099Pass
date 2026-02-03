@@ -1,27 +1,37 @@
 {
   "expo": {
     "name": "1099Pass",
-    "slug": "1099pass",
+    "slug": "1099pass-borrower",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "1099pass",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1B2B5E"
+      "backgroundColor": "#1E3A5F"
     },
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sltrdigital.1099pass"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#1B2B5E"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1E3A5F"
       },
       "package": "com.sltrdigital.pass1099"
     },
-    "plugins": [
-      "expo-secure-store"
-    ]
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

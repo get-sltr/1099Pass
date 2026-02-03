@@ -2,34 +2,38 @@
   "name": "@1099pass/borrower-app",
   "version": "0.1.0",
   "private": true,
-  "main": "App.tsx",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .expo dist"
+    "clean": "rm -rf .expo node_modules"
   },
   "dependencies": {
     "@1099pass/shared": "*",
-    "@react-navigation/bottom-tabs": "^6.5.0",
+    "@expo/vector-icons": "^14.0.0",
+    "@react-native-async-storage/async-storage": "1.21.0",
     "@react-navigation/native": "^6.1.0",
-    "@react-navigation/native-stack": "^6.9.0",
     "axios": "^1.6.0",
     "expo": "~50.0.0",
-    "expo-secure-store": "~12.8.0",
-    "expo-notifications": "~0.27.0",
+    "expo-camera": "~14.0.0",
     "expo-document-picker": "~11.10.0",
     "expo-image-picker": "~14.7.0",
+    "expo-linking": "~6.2.0",
+    "expo-router": "~3.4.0",
+    "expo-secure-store": "~12.8.0",
+    "expo-status-bar": "~1.11.0",
     "react": "18.2.0",
-    "react-native": "0.73.0",
-    "react-native-safe-area-context": "4.8.0",
+    "react-native": "0.73.2",
+    "react-native-safe-area-context": "4.8.2",
     "react-native-screens": "~3.29.0",
-    "react-native-svg": "14.1.0",
-    "zustand": "^4.5.0",
-    "zod": "^3.22.0"
+    "zod": "^3.22.0",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.20.0",
     "@types/react": "~18.2.0",
     "typescript": "^5.4.0"
   }

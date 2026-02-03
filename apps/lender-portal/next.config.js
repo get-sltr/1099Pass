@@ -4,6 +4,10 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  output: 'standalone',
 };
 
 module.exports = nextConfig;

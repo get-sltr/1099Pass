@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, ChangeEvent } from 'react';
 import Link from 'next/link';
 
 export default function RegisterPage() {
@@ -14,6 +14,12 @@ export default function RegisterPage() {
     // TODO: Implement registration
   };
 
+  const handleChange = (setter: (value: string) => void) => {
+    return (e: ChangeEvent<HTMLInputElement>) => {
+      setter(e.target.value);
+    };
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <h2 className="text-2xl font-semibold text-gray-900">Register Institution</h2>
@@ -23,7 +29,7 @@ export default function RegisterPage() {
         <input
           type="text"
           value={institutionName}
-          onChange={(e) => setInstitutionName(e.target.value)}
+          onChange={handleChange(setInstitutionName)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
           required
         />
@@ -34,7 +40,7 @@ export default function RegisterPage() {
         <input
           type="text"
           value={licenseNumber}
-          onChange={(e) => setLicenseNumber(e.target.value)}
+          onChange={handleChange(setLicenseNumber)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
           required
         />
@@ -45,7 +51,7 @@ export default function RegisterPage() {
         <input
           type="email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={handleChange(setEmail)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
           required
         />
@@ -56,7 +62,7 @@ export default function RegisterPage() {
         <input
           type="password"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={handleChange(setPassword)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent"
           required
         />

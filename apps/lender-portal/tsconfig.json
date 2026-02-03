@@ -7,6 +7,8 @@
     "allowJs": true,
     "noEmit": true,
     "incremental": true,
+    "noUncheckedIndexedAccess": false,
+    "lib": ["dom", "dom.iterable", "esnext"],
     "paths": {
       "@/*": ["./src/*"]
     },

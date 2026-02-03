@@ -42,7 +42,7 @@ export function safeValidate<T>(schema: ZodSchema<T>, data: unknown): Validation
 }
 
 /** Create a Zod schema for pagination parameters */
-export function createPaginationSchema(defaultLimit = 20, maxLimit = 100): ZodSchema<PaginationParams> {
+export function createPaginationSchema(defaultLimit = 20, maxLimit = 100) {
   return z.object({
     page: z.coerce.number().int().min(1).default(1),
     limit: z.coerce.number().int().min(1).max(maxLimit).default(defaultLimit),

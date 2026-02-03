@@ -2,14 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { Route } from 'next';
 
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: 'D' },
-  { href: '/reports', label: 'Reports', icon: 'R' },
-  { href: '/criteria', label: 'Criteria', icon: 'C' },
-  { href: '/messaging', label: 'Messages', icon: 'M' },
-  { href: '/analytics', label: 'Analytics', icon: 'A' },
-  { href: '/settings', label: 'Settings', icon: 'S' },
+const navItems: Array<{ href: Route; label: string; icon: string }> = [
+  { href: '/' as Route, label: 'Dashboard', icon: 'D' },
+  { href: '/reports' as Route, label: 'Reports', icon: 'R' },
+  { href: '/criteria' as Route, label: 'Criteria', icon: 'C' },
+  { href: '/messaging' as Route, label: 'Messages', icon: 'M' },
+  { href: '/analytics' as Route, label: 'Analytics', icon: 'A' },
+  { href: '/settings' as Route, label: 'Settings', icon: 'S' },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

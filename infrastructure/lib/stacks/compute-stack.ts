@@ -47,11 +47,11 @@ export class ComputeStack extends cdk.Stack {
     // Define API resources
     const authResource = props.api.root.addResource('auth');
     const borrowersResource = props.api.root.addResource('borrowers');
-    const financialResource = props.api.root.addResource('financial');
-    const documentsResource = props.api.root.addResource('documents');
+    props.api.root.addResource('financial');
+    props.api.root.addResource('documents');
     const reportsResource = props.api.root.addResource('reports');
-    const lendersResource = props.api.root.addResource('lenders');
-    const messagesResource = props.api.root.addResource('messages');
+    props.api.root.addResource('lenders');
+    props.api.root.addResource('messages');
 
     const methodOptions: apigateway.MethodOptions = {
       authorizer: props.authorizer,

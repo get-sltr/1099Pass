@@ -45,15 +45,8 @@ aws secretsmanager create-secret \
   --region "${REGION}" 2>/dev/null || \
   echo "  Plaid secret already exists"
 
-# Stripe secrets
-aws secretsmanager create-secret \
-  --name "1099pass-dev-stripe" \
-  --description "Stripe API credentials for 1099Pass" \
-  --secret-string '{"secret_key":"REPLACE_ME","webhook_secret":"REPLACE_ME"}' \
-  --region "${REGION}" 2>/dev/null || \
-  echo "  Stripe secret already exists"
-
 echo "  Secrets created (update with real values later)."
+echo "  Note: Payments are handled via Apple App Store and Google Play Billing."
 echo ""
 
 # Request SSL certificate for domain
@@ -109,9 +102,8 @@ echo "   aws secretsmanager update-secret \\"
 echo "     --secret-id 1099pass-dev-plaid \\"
 echo "     --secret-string '{\"client_id\":\"YOUR_PLAID_CLIENT_ID\",\"secret\":\"YOUR_PLAID_SECRET\"}'"
 echo ""
-echo "   aws secretsmanager update-secret \\"
-echo "     --secret-id 1099pass-dev-stripe \\"
-echo "     --secret-string '{\"secret_key\":\"sk_test_xxx\",\"webhook_secret\":\"whsec_xxx\"}'"
+echo "   Note: Payments are handled via Apple App Store (StoreKit) and Google Play Billing."
+echo "   No additional payment secrets required."
 echo ""
 echo "3. DEPLOY TO DEV"
 echo "   ./scripts/deploy.sh dev"

@@ -156,8 +156,8 @@ export default function SecurityPage() {
                 security, availability, and confidentiality controls
               </li>
               <li>
-                <strong>PCI DSS:</strong> Payment processing through PCI-compliant
-                partner (Stripe)
+                <strong>App Store Compliance:</strong> In-app purchases processed
+                through Apple App Store and Google Play with their built-in security
               </li>
               <li>
                 <strong>CCPA:</strong> California Consumer Privacy Act compliance
@@ -218,7 +218,12 @@ export default function SecurityPage() {
                 security for financial data
               </li>
               <li>
-                <strong>Stripe:</strong> PCI Level 1 certified payment processor
+                <strong>Apple App Store:</strong> App Store payment processing
+                with Apple&apos;s security infrastructure
+              </li>
+              <li>
+                <strong>Google Play:</strong> Play Billing for Android with
+                Google&apos;s security standards
               </li>
               <li>
                 <strong>AWS:</strong> SOC 1/2/3, ISO 27001, FedRAMP certified

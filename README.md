@@ -34,9 +34,9 @@
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │              External Integrations                       │    │
-│  │  ┌──────┐  ┌────────┐  ┌─────────┐  ┌───────────────┐  │    │
-│  │  │Plaid │  │ Stripe │  │ Cognito │  │ Gig Platforms │  │    │
-│  │  └──────┘  └────────┘  └─────────┘  └───────────────┘  │    │
+│  │  ┌──────┐  ┌─────────┐  ┌─────────┐  ┌───────────────┐ │    │
+│  │  │Plaid │  │ Cognito │  │StoreKit │  │ Gig Platforms │ │    │
+│  │  └──────┘  └─────────┘  └─────────┘  └───────────────┘ │    │
 │  └─────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -158,9 +158,10 @@ cd infrastructure && npx cdk bootstrap
 | `AWS_REGION` | AWS region (default: us-east-1) |
 | `PLAID_CLIENT_ID` | Plaid API client ID |
 | `PLAID_SECRET` | Plaid API secret |
-| `STRIPE_SECRET_KEY` | Stripe API secret key |
 
 Secrets are stored in AWS Secrets Manager and accessed at runtime.
+
+**Note:** Payments are handled via Apple App Store (StoreKit) and Google Play Billing, not through server-side payment processing.
 
 ## Key Features
 

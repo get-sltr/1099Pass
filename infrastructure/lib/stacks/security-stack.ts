@@ -12,7 +12,6 @@ export class SecurityStack extends cdk.Stack {
   public readonly encryptionKey: kms.Key;
   public readonly dbSecret: secretsmanager.Secret;
   public readonly plaidSecret: secretsmanager.Secret;
-  public readonly stripeSecret: secretsmanager.Secret;
 
   constructor(scope: Construct, id: string, props: SecurityStackProps) {
     super(scope, id, props);
@@ -41,12 +40,6 @@ export class SecurityStack extends cdk.Stack {
     this.plaidSecret = new secretsmanager.Secret(this, 'PlaidSecret', {
       secretName: `pass1099-${props.environment}-plaid-api-key`,
       description: 'Plaid API credentials',
-      encryptionKey: this.encryptionKey,
-    });
-
-    this.stripeSecret = new secretsmanager.Secret(this, 'StripeSecret', {
-      secretName: `pass1099-${props.environment}-stripe-api-key`,
-      description: 'Stripe API credentials',
       encryptionKey: this.encryptionKey,
     });
 

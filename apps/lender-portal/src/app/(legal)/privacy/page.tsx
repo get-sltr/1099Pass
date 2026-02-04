@@ -145,7 +145,7 @@ export default function PrivacyPolicyPage() {
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Cloud hosting providers (AWS)</li>
-              <li>Payment processors (Stripe)</li>
+              <li>App store payment processing (Apple App Store, Google Play)</li>
               <li>Financial data aggregators (Plaid)</li>
               <li>Identity verification services</li>
               <li>Analytics providers</li>

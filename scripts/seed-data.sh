@@ -702,24 +702,24 @@ VALUES (
 ) ON CONFLICT DO NOTHING;
 
 -- ============================================================================
--- SUBSCRIPTIONS
+-- SUBSCRIPTIONS (via Apple App Store / Google Play Billing)
 -- ============================================================================
 
 -- Borrower subscriptions
-INSERT INTO subscriptions (id, user_id, user_type, tier, stripe_customer_id, stripe_subscription_id, status, current_period_start, current_period_end)
+INSERT INTO subscriptions (id, user_id, user_type, tier, store_customer_id, store_subscription_id, store_type, status, current_period_start, current_period_end)
 VALUES
-  ('sub-brw-a-0000-000000000001', 'brw-a000-0000-0000-000000000001', 'BORROWER', 'PLUS', 'cus_seed_marcus', 'sub_seed_marcus', 'ACTIVE', now(), now() + interval '30 days'),
-  ('sub-brw-b-0000-000000000002', 'brw-b000-0000-0000-000000000002', 'BORROWER', 'PRO', 'cus_seed_sarah', 'sub_seed_sarah', 'ACTIVE', now(), now() + interval '30 days'),
-  ('sub-brw-c-0000-000000000003', 'brw-c000-0000-0000-000000000003', 'BORROWER', 'FREE', 'cus_seed_james', 'sub_seed_james', 'ACTIVE', now(), now() + interval '30 days'),
-  ('sub-brw-d-0000-000000000004', 'brw-d000-0000-0000-000000000004', 'BORROWER', 'PRO', 'cus_seed_priya', 'sub_seed_priya', 'ACTIVE', now(), now() + interval '30 days'),
-  ('sub-brw-e-0000-000000000005', 'brw-e000-0000-0000-000000000005', 'BORROWER', 'PLUS', 'cus_seed_alex', 'sub_seed_alex', 'ACTIVE', now(), now() + interval '30 days')
+  ('sub-brw-a-0000-000000000001', 'brw-a000-0000-0000-000000000001', 'BORROWER', 'PLUS', 'apple_seed_marcus', 'sub_apple_marcus', 'APPLE', 'ACTIVE', now(), now() + interval '30 days'),
+  ('sub-brw-b-0000-000000000002', 'brw-b000-0000-0000-000000000002', 'BORROWER', 'PRO', 'google_seed_sarah', 'sub_google_sarah', 'GOOGLE', 'ACTIVE', now(), now() + interval '30 days'),
+  ('sub-brw-c-0000-000000000003', 'brw-c000-0000-0000-000000000003', 'BORROWER', 'FREE', 'apple_seed_james', 'sub_apple_james', 'APPLE', 'ACTIVE', now(), now() + interval '30 days'),
+  ('sub-brw-d-0000-000000000004', 'brw-d000-0000-0000-000000000004', 'BORROWER', 'PRO', 'google_seed_priya', 'sub_google_priya', 'GOOGLE', 'ACTIVE', now(), now() + interval '30 days'),
+  ('sub-brw-e-0000-000000000005', 'brw-e000-0000-0000-000000000005', 'BORROWER', 'PLUS', 'apple_seed_alex', 'sub_apple_alex', 'APPLE', 'ACTIVE', now(), now() + interval '30 days')
 ON CONFLICT DO NOTHING;
 
--- Lender subscriptions
-INSERT INTO subscriptions (id, user_id, user_type, tier, stripe_customer_id, stripe_subscription_id, status, current_period_start, current_period_end)
+-- Lender subscriptions (web portal - use Google Play for testing)
+INSERT INTO subscriptions (id, user_id, user_type, tier, store_customer_id, store_subscription_id, store_type, status, current_period_start, current_period_end)
 VALUES
-  ('sub-lnd-a-0000-000000000001', 'lnd-a000-0000-0000-000000000001', 'LENDER', 'ENTERPRISE', 'cus_seed_lender_a', 'sub_seed_lender_a', 'ACTIVE', now(), now() + interval '30 days'),
-  ('sub-lnd-b-0000-000000000002', 'lnd-b000-0000-0000-000000000002', 'LENDER', 'PROFESSIONAL', 'cus_seed_lender_b', 'sub_seed_lender_b', 'ACTIVE', now(), now() + interval '30 days')
+  ('sub-lnd-a-0000-000000000001', 'lnd-a000-0000-0000-000000000001', 'LENDER', 'ENTERPRISE', 'google_seed_lender_a', 'sub_google_lender_a', 'GOOGLE', 'ACTIVE', now(), now() + interval '30 days'),
+  ('sub-lnd-b-0000-000000000002', 'lnd-b000-0000-0000-000000000002', 'LENDER', 'PROFESSIONAL', 'google_seed_lender_b', 'sub_google_lender_b', 'GOOGLE', 'ACTIVE', now(), now() + interval '30 days')
 ON CONFLICT DO NOTHING;
 
 -- ============================================================================

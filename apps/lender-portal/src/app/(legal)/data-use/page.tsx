@@ -51,8 +51,8 @@ export default function DataUsePolicyPage() {
                 balances, and deposit information via Plaid
               </li>
               <li>
-                <strong>Payment Processors:</strong> PayPal, Stripe, Square, and
-                similar services
+                <strong>Payment Processors:</strong> PayPal, Venmo, Square, and
+                similar services (for income verification, not billing)
               </li>
               <li>
                 <strong>Tax Documents:</strong> 1099 forms, tax returns, and

@@ -9,7 +9,6 @@ env:
     PNPM_VERSION: "8"
   parameter-store:
     PLAID_CLIENT_ID: "/1099pass/${ENVIRONMENT}/plaid/client-id"
-    STRIPE_SECRET_KEY: "/1099pass/${ENVIRONMENT}/stripe/secret-key"
   secrets-manager:
     DATABASE_URL: "1099pass-${ENVIRONMENT}-db-credentials:connectionString"
 

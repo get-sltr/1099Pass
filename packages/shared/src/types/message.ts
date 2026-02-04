@@ -68,8 +68,9 @@ export interface Subscription {
   user_id: string;
   user_type: UserType;
   tier: AllSubscriptionTier;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
+  store_customer_id: string; // Apple App Store or Google Play customer ID
+  store_subscription_id: string; // Apple/Google subscription ID
+  store_type: 'APPLE' | 'GOOGLE'; // Which app store
   status: SubscriptionStatus;
   current_period_start: string;
   current_period_end: string;
@@ -102,8 +103,9 @@ export const SubscriptionSchema = z.object({
   user_id: z.string().uuid(),
   user_type: z.nativeEnum(UserType),
   tier: z.nativeEnum(AllSubscriptionTier),
-  stripe_customer_id: z.string().min(1),
-  stripe_subscription_id: z.string().min(1),
+  store_customer_id: z.string().min(1),
+  store_subscription_id: z.string().min(1),
+  store_type: z.enum(['APPLE', 'GOOGLE']),
   status: z.nativeEnum(SubscriptionStatus),
   current_period_start: z.string().datetime(),
   current_period_end: z.string().datetime(),

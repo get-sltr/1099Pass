@@ -287,13 +287,6 @@ export const ServiceCircuits = {
       successThreshold: 2,
       failureWindow: 120000,
     }),
-  stripe: () =>
-    circuitBreakers.get('stripe', {
-      failureThreshold: 3,
-      resetTimeout: 30000,
-      successThreshold: 2,
-      failureWindow: 60000,
-    }),
   database: () =>
     circuitBreakers.get('database', {
       failureThreshold: 5,

@@ -1,0 +1,123 @@
+version: 0.2
+
+# AWS CodeBuild buildspec for 1099Pass CI/CD
+# Runs tests, builds artifacts, and deploys to environments
+
+env:
+  variables:
+    NODE_VERSION: "20"
+    PNPM_VERSION: "8"
+  parameter-store:
+    PLAID_CLIENT_ID: "/1099pass/${ENVIRONMENT}/plaid/client-id"
+    STRIPE_SECRET_KEY: "/1099pass/${ENVIRONMENT}/stripe/secret-key"
+  secrets-manager:
+    DATABASE_URL: "1099pass-${ENVIRONMENT}-db-credentials:connectionString"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+    commands:
+      - echo "Installing pnpm..."
+      - npm install -g pnpm@${PNPM_VERSION}
+      - echo "Installing dependencies..."
+      - pnpm install --frozen-lockfile
+      - echo "Installing CDK..."
+      - npm install -g aws-cdk
+
+  pre_build:
+    commands:
+      - echo "Running pre-build checks..."
+      - echo "Node version:" && node --version
+      - echo "pnpm version:" && pnpm --version
+      - echo "Environment:" ${ENVIRONMENT}
+
+      # Type checking
+      - echo "Running TypeScript type checks..."
+      - pnpm run typecheck
+
+      # Linting
+      - echo "Running linters..."
+      - pnpm run lint
+
+      # Security audit
+      - echo "Running security audit..."
+      - pnpm audit --audit-level=high || true
+
+  build:
+    commands:
+      - echo "Build started on $(date)"
+
+      # Run tests
+      - echo "Running unit tests..."
+      - pnpm run test:ci
+
+      # Build packages
+      - echo "Building shared packages..."
+      - pnpm --filter @1099pass/shared build
+
+      # Build API
+      - echo "Building API handlers..."
+      - pnpm --filter @1099pass/api build
+
+      # Build Lender Portal
+      - echo "Building Lender Portal..."
+      - pnpm --filter @1099pass/lender-portal build
+
+      # CDK synth
+      - echo "Synthesizing CDK stacks..."
+      - cd infrastructure && cdk synth --all --output=cdk.out
+
+      - echo "Build completed on $(date)"
+
+  post_build:
+    commands:
+      - echo "Post-build phase started..."
+
+      # Deploy if this is a deployment build
+      - |
+        if [ "$DEPLOY" = "true" ]; then
+          echo "Deploying to ${ENVIRONMENT}..."
+          cd infrastructure
+          cdk deploy --all --require-approval never --outputs-file cdk-outputs.json
+          echo "Deployment completed!"
+        else
+          echo "Skipping deployment (DEPLOY != true)"
+        fi
+
+      # Upload test results
+      - echo "Uploading test results..."
+
+artifacts:
+  files:
+    - "**/*"
+  base-directory: "."
+  discard-paths: no
+  secondary-artifacts:
+    lender-portal:
+      files:
+        - "**/*"
+      base-directory: "apps/lender-portal/.next/standalone"
+      name: lender-portal-${CODEBUILD_BUILD_NUMBER}
+    cdk-output:
+      files:
+        - "**/*"
+      base-directory: "infrastructure/cdk.out"
+      name: cdk-output-${CODEBUILD_BUILD_NUMBER}
+
+reports:
+  jest-reports:
+    files:
+      - "coverage/clover.xml"
+      - "junit.xml"
+    file-format: JUNITXML
+  coverage-reports:
+    files:
+      - "coverage/lcov.info"
+    file-format: LCOV
+
+cache:
+  paths:
+    - "node_modules/**/*"
+    - ".pnpm-store/**/*"
+    - "apps/lender-portal/.next/cache/**/*"

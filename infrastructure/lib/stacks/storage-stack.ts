@@ -11,6 +11,36 @@ export interface StorageStackProps extends cdk.StackProps {
   encryptionKey: kms.IKey;
 }
 
+/**
+ * Get allowed CORS origins based on environment
+ */
+function getAllowedOrigins(environment: string): string[] {
+  switch (environment) {
+    case 'prod':
+      return [
+        'https://1099pass.com',
+        'https://www.1099pass.com',
+        'https://lender.1099pass.com',
+        'https://app.1099pass.com',
+        'https://api.1099pass.com',
+      ];
+    case 'staging':
+      return [
+        'https://staging.1099pass.com',
+        'https://lender.staging.1099pass.com',
+        'https://app.staging.1099pass.com',
+        'https://api.staging.1099pass.com',
+      ];
+    default:
+      return [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:8080',
+        'https://dev.1099pass.com',
+      ];
+  }
+}
+
 export class StorageStack extends cdk.Stack {
   public readonly documentsBucket: s3.IBucket;
   public readonly reportsBucket: s3.IBucket;
@@ -19,7 +49,9 @@ export class StorageStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: StorageStackProps) {
     super(scope, id, props);
 
-    // Documents bucket
+    const allowedOrigins = getAllowedOrigins(props.environment);
+
+    // Documents bucket with environment-specific CORS
     const documents = new EncryptedBucket(this, 'DocumentsBucket', {
       encryptionKey: props.encryptionKey,
       versioned: true,
@@ -29,9 +61,10 @@ export class StorageStack extends cdk.Stack {
       ],
       corsRules: [{
         allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT, s3.HttpMethods.POST],
-        allowedOrigins: ['*'], // Tighten in prod
-        allowedHeaders: ['*'],
-        maxAge: 3000,
+        allowedOrigins: allowedOrigins,
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Amz-Date', 'X-Api-Key', 'X-Amz-Security-Token'],
+        exposedHeaders: ['ETag', 'Content-Length'],
+        maxAge: 3600,
       }],
     });
     this.documentsBucket = documents.bucket;
@@ -48,7 +81,7 @@ export class StorageStack extends cdk.Stack {
 
     // Lender portal bucket
     const portalBucket = new s3.Bucket(this, 'PortalBucket', {
-      bucketName: `1099pass-${props.environment}-lender-portal`,
+      bucketName: `pass1099-${props.environment}-lender-portal`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: cdk.RemovalPolicy.DESTROY,

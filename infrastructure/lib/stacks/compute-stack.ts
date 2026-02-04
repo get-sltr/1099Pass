@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
@@ -61,7 +62,7 @@ export class ComputeStack extends cdk.Stack {
     // Auth handlers
     const registerFn = new lambda.Function(this, 'RegisterFn', {
       ...lambdaProps,
-      functionName: `1099pass-${props.environment}-auth-register`,
+      functionName: `pass1099-${props.environment}-auth-register`,
       handler: 'register.handler',
       code: lambda.Code.fromAsset('../packages/api/dist/handlers/auth'),
     });
@@ -70,7 +71,7 @@ export class ComputeStack extends cdk.Stack {
 
     const loginFn = new lambda.Function(this, 'LoginFn', {
       ...lambdaProps,
-      functionName: `1099pass-${props.environment}-auth-login`,
+      functionName: `pass1099-${props.environment}-auth-login`,
       handler: 'login.handler',
       code: lambda.Code.fromAsset('../packages/api/dist/handlers/auth'),
     });
@@ -80,7 +81,7 @@ export class ComputeStack extends cdk.Stack {
     // Borrower handlers
     const getProfileFn = new lambda.Function(this, 'GetProfileFn', {
       ...lambdaProps,
-      functionName: `1099pass-${props.environment}-borrower-get-profile`,
+      functionName: `pass1099-${props.environment}-borrower-get-profile`,
       handler: 'get-profile.handler',
       code: lambda.Code.fromAsset('../packages/api/dist/handlers/borrower'),
     });
@@ -90,7 +91,7 @@ export class ComputeStack extends cdk.Stack {
     // Reports handlers
     const generateReportFn = new lambda.Function(this, 'GenerateReportFn', {
       ...lambdaProps,
-      functionName: `1099pass-${props.environment}-reports-generate`,
+      functionName: `pass1099-${props.environment}-reports-generate`,
       handler: 'generate-report.handler',
       code: lambda.Code.fromAsset('../packages/api/dist/handlers/reports'),
     });
@@ -99,21 +100,35 @@ export class ComputeStack extends cdk.Stack {
 
     const listReportsFn = new lambda.Function(this, 'ListReportsFn', {
       ...lambdaProps,
-      functionName: `1099pass-${props.environment}-reports-list`,
+      functionName: `pass1099-${props.environment}-reports-list`,
       handler: 'list-reports.handler',
       code: lambda.Code.fromAsset('../packages/api/dist/handlers/reports'),
     });
     reportsResource.addMethod('GET', new apigateway.LambdaIntegration(listReportsFn), methodOptions);
     this.lambdaFunctions.push(listReportsFn);
 
-    // Grant permissions
-    props.dbSecret.grantRead(registerFn);
-    props.dbSecret.grantRead(loginFn);
-    props.dbSecret.grantRead(getProfileFn);
-    props.dbSecret.grantRead(generateReportFn);
-    props.dbSecret.grantRead(listReportsFn);
+    // Grant permissions via IAM policies (avoids cross-stack key policy dependencies)
+    const allFunctions = [registerFn, loginFn, getProfileFn, generateReportFn, listReportsFn];
+
+    // Grant secrets manager and KMS access via IAM
+    allFunctions.forEach(fn => {
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['secretsmanager:GetSecretValue'],
+        resources: [props.dbSecret.secretArn],
+      }));
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['kms:Decrypt'],
+        resources: [props.encryptionKey.keyArn],
+      }));
+    });
+
     props.documentsBucket.grantReadWrite(generateReportFn);
     props.reportsBucket.grantReadWrite(generateReportFn);
-    props.encryptionKey.grantEncryptDecrypt(generateReportFn);
+
+    // Additional KMS permissions for report generation
+    generateReportFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['kms:Encrypt', 'kms:GenerateDataKey*'],
+      resources: [props.encryptionKey.keyArn],
+    }));
   }
 }

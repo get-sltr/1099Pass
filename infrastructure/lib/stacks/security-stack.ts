@@ -19,7 +19,7 @@ export class SecurityStack extends cdk.Stack {
 
     // KMS Customer Managed Key
     this.encryptionKey = new kms.Key(this, 'EncryptionKey', {
-      alias: `1099pass-${props.environment}-key`,
+      alias: `pass1099-${props.environment}-key`,
       description: '1099Pass data encryption key',
       enableKeyRotation: true,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
@@ -27,7 +27,7 @@ export class SecurityStack extends cdk.Stack {
 
     // Secrets Manager entries
     this.dbSecret = new secretsmanager.Secret(this, 'DbSecret', {
-      secretName: `1099pass-${props.environment}-db-credentials`,
+      secretName: `pass1099-${props.environment}-db-credentials`,
       description: 'RDS PostgreSQL credentials',
       encryptionKey: this.encryptionKey,
       generateSecretString: {
@@ -39,19 +39,19 @@ export class SecurityStack extends cdk.Stack {
     });
 
     this.plaidSecret = new secretsmanager.Secret(this, 'PlaidSecret', {
-      secretName: `1099pass-${props.environment}-plaid-api-key`,
+      secretName: `pass1099-${props.environment}-plaid-api-key`,
       description: 'Plaid API credentials',
       encryptionKey: this.encryptionKey,
     });
 
     this.stripeSecret = new secretsmanager.Secret(this, 'StripeSecret', {
-      secretName: `1099pass-${props.environment}-stripe-api-key`,
+      secretName: `pass1099-${props.environment}-stripe-api-key`,
       description: 'Stripe API credentials',
       encryptionKey: this.encryptionKey,
     });
 
     new secretsmanager.Secret(this, 'JwtSecret', {
-      secretName: `1099pass-${props.environment}-jwt-signing-key`,
+      secretName: `pass1099-${props.environment}-jwt-signing-key`,
       description: 'JWT signing key',
       encryptionKey: this.encryptionKey,
       generateSecretString: { passwordLength: 64, excludePunctuation: true },

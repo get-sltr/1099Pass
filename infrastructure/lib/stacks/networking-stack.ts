@@ -17,7 +17,7 @@ export class NetworkingStack extends cdk.Stack {
     super(scope, id, props);
 
     this.vpc = new ec2.Vpc(this, 'VPC', {
-      vpcName: `1099pass-${props.environment}-vpc`,
+      vpcName: `pass1099-${props.environment}-vpc`,
       maxAzs: 2,
       natGateways: props.isProd ? 2 : 1,
       subnetConfiguration: [
@@ -30,20 +30,20 @@ export class NetworkingStack extends cdk.Stack {
     // Security Groups
     this.lambdaSg = new ec2.SecurityGroup(this, 'LambdaSG', {
       vpc: this.vpc,
-      securityGroupName: `1099pass-${props.environment}-lambda-sg`,
+      securityGroupName: `pass1099-${props.environment}-lambda-sg`,
       description: 'Security group for Lambda functions',
     });
 
     this.rdsSg = new ec2.SecurityGroup(this, 'RdsSG', {
       vpc: this.vpc,
-      securityGroupName: `1099pass-${props.environment}-rds-sg`,
+      securityGroupName: `pass1099-${props.environment}-rds-sg`,
       description: 'Security group for RDS PostgreSQL',
     });
     this.rdsSg.addIngressRule(this.lambdaSg, ec2.Port.tcp(5432), 'Allow Lambda to RDS');
 
     this.cacheSg = new ec2.SecurityGroup(this, 'CacheSG', {
       vpc: this.vpc,
-      securityGroupName: `1099pass-${props.environment}-cache-sg`,
+      securityGroupName: `pass1099-${props.environment}-cache-sg`,
       description: 'Security group for ElastiCache',
     });
     this.cacheSg.addIngressRule(this.lambdaSg, ec2.Port.tcp(6379), 'Allow Lambda to ElastiCache');

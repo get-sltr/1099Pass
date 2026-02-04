@@ -22,7 +22,7 @@ export class DatabaseStack extends cdk.Stack {
     super(scope, id, props);
 
     const dbSecret = new secretsmanager.Secret(this, 'DbCredentials', {
-      secretName: `1099pass-${props.environment}-db-credentials`,
+      secretName: `pass1099-${props.environment}-db-credentials`,
       encryptionKey: props.encryptionKey,
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ username: 'app_user' }),
@@ -34,7 +34,7 @@ export class DatabaseStack extends cdk.Stack {
     this.dbSecret = dbSecret;
 
     this.dbInstance = new rds.DatabaseInstance(this, 'PostgreSQL', {
-      instanceIdentifier: `1099pass-${props.environment}-db`,
+      instanceIdentifier: `pass1099-${props.environment}-db`,
       engine: rds.DatabaseInstanceEngine.postgres({ version: rds.PostgresEngineVersion.VER_15 }),
       instanceType: props.isProd
         ? ec2.InstanceType.of(ec2.InstanceClass.R6G, ec2.InstanceSize.LARGE)
@@ -56,7 +56,7 @@ export class DatabaseStack extends cdk.Stack {
 
     // DynamoDB Tables
     new dynamodb.Table(this, 'SessionsTable', {
-      tableName: `1099pass-${props.environment}-sessions`,
+      tableName: `pass1099-${props.environment}-sessions`,
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'sessionId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -67,7 +67,7 @@ export class DatabaseStack extends cdk.Stack {
     });
 
     const connectionsTable = new dynamodb.Table(this, 'WebSocketConnectionsTable', {
-      tableName: `1099pass-${props.environment}-ws-connections`,
+      tableName: `pass1099-${props.environment}-ws-connections`,
       partitionKey: { name: 'connectionId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       encryption: dynamodb.TableEncryption.CUSTOMER_MANAGED,
@@ -80,7 +80,7 @@ export class DatabaseStack extends cdk.Stack {
     });
 
     const notificationsTable = new dynamodb.Table(this, 'NotificationsTable', {
-      tableName: `1099pass-${props.environment}-notifications`,
+      tableName: `pass1099-${props.environment}-notifications`,
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'notificationId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,

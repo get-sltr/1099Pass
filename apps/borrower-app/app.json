@@ -6,32 +6,105 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "1099pass",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1E3A5F"
+      "backgroundColor": "#1B4D3E"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.sltrdigital.1099pass"
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sltrdigital.1099pass",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "1099Pass needs camera access to scan documents for identity verification.",
+        "NSPhotoLibraryUsageDescription": "1099Pass needs photo library access to upload documents for verification.",
+        "NSFaceIDUsageDescription": "Use Face ID to securely access your 1099Pass account.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "associatedDomains": [
+        "applinks:1099pass.com",
+        "applinks:www.1099pass.com"
+      ],
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1E3A5F"
+        "backgroundColor": "#1B4D3E"
       },
-      "package": "com.sltrdigital.pass1099"
+      "package": "com.sltrdigital.pass1099",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "1099pass.com",
+              "pathPrefix": "/app"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-secure-store"],
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow 1099Pass to access your camera for document scanning."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow 1099Pass to access your photos for document uploads."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow 1099Pass to use Face ID for secure login."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    },
+    "owner": "sltrdigital",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/your-eas-project-id"
     }
   }
 }

@@ -15,7 +15,7 @@ export class AuthStack extends cdk.Stack {
     super(scope, id, props);
 
     this.userPool = new cognito.UserPool(this, 'UserPool', {
-      userPoolName: `1099pass-${props.environment}-users`,
+      userPoolName: `pass1099-${props.environment}-users`,
       selfSignUpEnabled: true,
       signInAliases: { email: true, phone: true },
       autoVerify: { email: true, phone: true },
@@ -43,7 +43,7 @@ export class AuthStack extends cdk.Stack {
     });
 
     this.borrowerClient = this.userPool.addClient('BorrowerAppClient', {
-      userPoolClientName: '1099pass-borrower-app',
+      userPoolClientName: 'pass1099-borrower-app',
       authFlows: { userPassword: true, userSrp: true },
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),
@@ -51,7 +51,7 @@ export class AuthStack extends cdk.Stack {
     });
 
     this.lenderClient = this.userPool.addClient('LenderPortalClient', {
-      userPoolClientName: '1099pass-lender-portal',
+      userPoolClientName: 'pass1099-lender-portal',
       authFlows: { userPassword: true, userSrp: true },
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),

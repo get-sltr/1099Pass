@@ -2,7 +2,8 @@
 const nextConfig = {
   transpilePackages: ['@1099pass/shared'],
   experimental: {
-    typedRoutes: true,
+    // typedRoutes disabled until all routes are implemented
+    typedRoutes: false,
   },
   eslint: {
     ignoreDuringBuilds: true,

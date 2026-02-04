@@ -27,20 +27,20 @@ const tags = {
   Owner: 'SLTR Digital LLC',
 };
 
-const networking = new NetworkingStack(app, `1099Pass-Networking-${environment}`, {
+const networking = new NetworkingStack(app, `Pass1099-Networking-${environment}`, {
   env,
   tags,
   environment,
   isProd,
 });
 
-const security = new SecurityStack(app, `1099Pass-Security-${environment}`, {
+const security = new SecurityStack(app, `Pass1099-Security-${environment}`, {
   env,
   tags,
   environment,
 });
 
-const database = new DatabaseStack(app, `1099Pass-Database-${environment}`, {
+const database = new DatabaseStack(app, `Pass1099-Database-${environment}`, {
   env,
   tags,
   environment,
@@ -50,27 +50,27 @@ const database = new DatabaseStack(app, `1099Pass-Database-${environment}`, {
   encryptionKey: security.encryptionKey,
 });
 
-const storage = new StorageStack(app, `1099Pass-Storage-${environment}`, {
+const storage = new StorageStack(app, `Pass1099-Storage-${environment}`, {
   env,
   tags,
   environment,
   encryptionKey: security.encryptionKey,
 });
 
-const auth = new AuthStack(app, `1099Pass-Auth-${environment}`, {
+const auth = new AuthStack(app, `Pass1099-Auth-${environment}`, {
   env,
   tags,
   environment,
 });
 
-const api = new ApiStack(app, `1099Pass-Api-${environment}`, {
+const api = new ApiStack(app, `Pass1099-Api-${environment}`, {
   env,
   tags,
   environment,
   userPool: auth.userPool,
 });
 
-const compute = new ComputeStack(app, `1099Pass-Compute-${environment}`, {
+const compute = new ComputeStack(app, `Pass1099-Compute-${environment}`, {
   env,
   tags,
   environment,
@@ -84,7 +84,7 @@ const compute = new ComputeStack(app, `1099Pass-Compute-${environment}`, {
   authorizer: api.authorizer,
 });
 
-new MonitoringStack(app, `1099Pass-Monitoring-${environment}`, {
+new MonitoringStack(app, `Pass1099-Monitoring-${environment}`, {
   env,
   tags,
   environment,

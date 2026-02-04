@@ -23,6 +23,7 @@ export const colors = {
   // Text Colors
   textPrimary: '#1A2E26', // Green-black - all body text, headings
   textSecondary: '#5C7A6E', // Green-gray - subtitles, timestamps, helper text
+  textTertiary: '#9CB4A8', // Light green-gray - placeholders, disabled, meta text
   textInverse: '#FFFFFF', // White text on dark backgrounds
 
   // Border

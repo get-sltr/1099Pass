@@ -6,7 +6,21 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import type { Borrower } from '@1099pass/shared';
+import { SubscriptionTier, KYCStatus } from '@1099pass/shared';
 import { api } from '../services/api';
+
+// Extended Borrower type for app-specific fields
+interface AppUser {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone?: string | null;
+  subscription_tier: SubscriptionTier;
+  onboarding_complete?: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -18,7 +32,7 @@ const STORAGE_KEYS = {
 
 interface AuthState {
   // Auth state
-  user: Borrower | null;
+  user: AppUser | null;
   token: string | null;
   refreshToken: string | null;
   isLoading: boolean;
@@ -34,7 +48,7 @@ interface AuthState {
   loadStoredAuth: () => Promise<void>;
   refreshAuthToken: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
-  updateUser: (user: Partial<Borrower>) => void;
+  updateUser: (user: Partial<AppUser>) => void;
   setLoading: (loading: boolean) => void;
 }
 
@@ -63,13 +77,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (isDev) {
         // Mock successful login for development
-        const mockUser: Borrower = {
+        const mockUser: AppUser = {
           id: 'mock-user-123',
           email,
           first_name: email.split('@')[0] || 'User',
           last_name: 'Demo',
           phone: '+1234567890',
-          subscription_tier: 'FREE',
+          subscription_tier: SubscriptionTier.FREE,
           onboarding_complete: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -98,7 +112,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await api.post<{
         token: string;
         refreshToken: string;
-        user: Borrower;
+        user: AppUser;
       }>('/auth/login', { email, password });
 
       const { token, refreshToken, user } = response;
@@ -130,13 +144,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (isDev) {
         // Mock successful signup for development
-        const mockUser: Borrower = {
+        const mockUser: AppUser = {
           id: 'mock-user-' + Date.now(),
           email: data.email,
           first_name: data.firstName,
           last_name: data.lastName,
           phone: data.phone || null,
-          subscription_tier: 'FREE',
+          subscription_tier: SubscriptionTier.FREE,
           onboarding_complete: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -162,7 +176,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const response = await api.post<{
         token: string;
         refreshToken: string;
-        user: Borrower;
+        user: AppUser;
       }>('/auth/register', {
         email: data.email,
         password: data.password,
@@ -221,7 +235,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       ]);
 
       if (token && userJson) {
-        const user = JSON.parse(userJson) as Borrower;
+        const user = JSON.parse(userJson) as AppUser;
 
         set({
           user,
@@ -298,7 +312,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  updateUser: (updates: Partial<Borrower>) => {
+  updateUser: (updates: Partial<AppUser>) => {
     const { user } = get();
     if (user) {
       const updatedUser = { ...user, ...updates };

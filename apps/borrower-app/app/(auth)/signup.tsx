@@ -279,7 +279,7 @@ export default function SignUpScreen() {
               style={[
                 styles.checkbox,
                 formData.acceptTerms && styles.checkboxChecked,
-                errors.acceptTerms && styles.checkboxError,
+                errors.acceptTerms ? styles.checkboxError : undefined,
               ]}
             >
               {formData.acceptTerms && (

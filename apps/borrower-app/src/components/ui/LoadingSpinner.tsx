@@ -98,7 +98,7 @@ export function Skeleton({
       style={[
         styles.skeleton,
         {
-          width,
+          width: width as number | `${number}%`,
           height,
           borderRadius: radius,
           backgroundColor,

@@ -25,10 +25,10 @@ export default function ProfileScreen() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    firstName: user?.first_name || '',
+    lastName: user?.last_name || '',
     email: user?.email || '',
-    phone: '',
+    phone: user?.phone || '',
   });
 
   const handleSave = () => {
@@ -72,7 +72,7 @@ export default function ProfileScreen() {
 
         {/* Avatar section */}
         <View style={styles.avatarSection}>
-          <Avatar name={user?.firstName || 'U'} size="2xl" />
+          <Avatar name={user?.first_name || 'U'} size="2xl" />
           {isEditing && (
             <TouchableOpacity style={styles.changePhotoButton}>
               <Ionicons name="camera-outline" size={16} color={colors.primary} />
@@ -114,7 +114,7 @@ export default function ProfileScreen() {
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Name</Text>
                 <Text style={styles.infoValue}>
-                  {user?.firstName} {user?.lastName}
+                  {user?.first_name} {user?.last_name}
                 </Text>
               </View>
               <View style={styles.divider} />

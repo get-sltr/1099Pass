@@ -14,13 +14,14 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { colors, borderRadius, spacing, layout, textStyles, shadows } from '../../theme';
+import { colors, borderRadius, spacing, layout, textStyles as themeTextStyles, shadows } from '../../theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'mint';
 export type ButtonSize = 'small' | 'medium' | 'large';
 
-interface ButtonProps {
+export interface ButtonProps {
   title: string;
   onPress: () => void;
   variant?: ButtonVariant;
@@ -29,6 +30,8 @@ interface ButtonProps {
   loading?: boolean;
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
+  leftIcon?: string; // Ionicon name
+  rightIcon?: string; // Ionicon name
   fullWidth?: boolean;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
@@ -45,6 +48,8 @@ export function Button({
   loading = false,
   icon,
   iconPosition = 'left',
+  leftIcon,
+  rightIcon,
   fullWidth = false,
   style,
   textStyle,
@@ -68,7 +73,7 @@ export function Button({
     style,
   ];
 
-  const textStyles = [
+  const textStylesArray = [
     styles.text,
     styles[`${variant}Text` as keyof typeof styles],
     styles[`${size}Text` as keyof typeof styles],
@@ -79,6 +84,25 @@ export function Button({
   const spinnerColor = variant === 'primary' || variant === 'danger'
     ? colors.textInverse
     : colors.primary;
+
+  const iconColor = variant === 'primary' || variant === 'danger'
+    ? colors.textInverse
+    : colors.primary;
+
+  const iconSize = size === 'small' ? 16 : size === 'large' ? 22 : 20;
+
+  // Determine what to render on left/right
+  const renderLeftIcon = leftIcon ? (
+    <Ionicons name={leftIcon as any} size={iconSize} color={iconColor} style={styles.iconLeft} />
+  ) : icon && iconPosition === 'left' ? (
+    <View style={styles.iconLeft}>{icon}</View>
+  ) : null;
+
+  const renderRightIcon = rightIcon ? (
+    <Ionicons name={rightIcon as any} size={iconSize} color={iconColor} style={styles.iconRight} />
+  ) : icon && iconPosition === 'right' ? (
+    <View style={styles.iconRight}>{icon}</View>
+  ) : null;
 
   return (
     <TouchableOpacity
@@ -94,13 +118,9 @@ export function Button({
         <ActivityIndicator size="small" color={spinnerColor} />
       ) : (
         <View style={styles.content}>
-          {icon && iconPosition === 'left' && (
-            <View style={styles.iconLeft}>{icon}</View>
-          )}
-          <Text style={textStyles}>{title}</Text>
-          {icon && iconPosition === 'right' && (
-            <View style={styles.iconRight}>{icon}</View>
-          )}
+          {renderLeftIcon}
+          <Text style={textStylesArray}>{title}</Text>
+          {renderRightIcon}
         </View>
       )}
     </TouchableOpacity>
@@ -172,7 +192,7 @@ const styles = StyleSheet.create({
 
   // Text styles
   text: {
-    ...textStyles.button,
+    ...themeTextStyles.button,
     color: colors.textPrimary,
   },
   primaryText: {
@@ -193,13 +213,13 @@ const styles = StyleSheet.create({
 
   // Size-specific text
   smallText: {
-    ...textStyles.buttonSmall,
+    ...themeTextStyles.buttonSmall,
   },
   mediumText: {
-    ...textStyles.button,
+    ...themeTextStyles.button,
   },
   largeText: {
-    ...textStyles.buttonLarge,
+    ...themeTextStyles.buttonLarge,
   },
 
   disabledText: {
@@ -209,10 +229,10 @@ const styles = StyleSheet.create({
   // Icon spacing
   iconLeft: {
     marginRight: spacing[2],
-  },
+  } as ViewStyle,
   iconRight: {
     marginLeft: spacing[2],
-  },
+  } as ViewStyle,
 });
 
 export default Button;

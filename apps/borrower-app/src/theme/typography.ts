@@ -188,6 +188,13 @@ export const textStyles = {
   },
 
   // Numbers and Financial Data
+  moneyDisplay: {
+    fontFamily: fontFamilies.mono,
+    fontSize: fontSizes['4xl'],
+    fontWeight: fontWeights.bold,
+    lineHeight: fontSizes['4xl'] * lineHeights.tight,
+    letterSpacing: letterSpacing.tight,
+  },
   scoreDisplay: {
     fontFamily: fontFamilies.mono,
     fontSize: fontSizes['5xl'],

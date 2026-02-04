@@ -1,108 +1,209 @@
 /**
  * Messages Screen
- * Communication with lenders and support
+ * Conversations list with lenders and support
  */
 
-import { useState } from 'react';
+import { useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Badge, Avatar } from '../../src/components/ui';
+import { useMessagingStore, type Conversation } from '../../src/store/messaging-store';
 import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
-
-interface Conversation {
-  id: string;
-  participantName: string;
-  participantType: 'lender' | 'support';
-  lastMessage: string;
-  timestamp: string;
-  unreadCount: number;
-  isOnline: boolean;
-}
-
-const MOCK_CONVERSATIONS: Conversation[] = [
-  {
-    id: '1',
-    participantName: 'Quick Mortgage Co.',
-    participantType: 'lender',
-    lastMessage: 'Thanks for sending your income report. I\'ve reviewed it and have a few questions...',
-    timestamp: '10:32 AM',
-    unreadCount: 2,
-    isOnline: true,
-  },
-  {
-    id: '2',
-    participantName: '1099Pass Support',
-    participantType: 'support',
-    lastMessage: 'Your verification is complete! Let us know if you have any questions.',
-    timestamp: 'Yesterday',
-    unreadCount: 0,
-    isOnline: true,
-  },
-  {
-    id: '3',
-    participantName: 'Drive Finance',
-    participantType: 'lender',
-    lastMessage: 'We\'d love to help you with your auto loan. When would be a good time to chat?',
-    timestamp: 'Jan 18',
-    unreadCount: 0,
-    isOnline: false,
-  },
-  {
-    id: '4',
-    participantName: 'Freelancer Credit Union',
-    participantType: 'lender',
-    lastMessage: 'Your pre-approval letter is ready. Check your documents.',
-    timestamp: 'Jan 15',
-    unreadCount: 0,
-    isOnline: false,
-  },
-];
 
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
-  const [conversations] = useState<Conversation[]>(MOCK_CONVERSATIONS);
 
-  const totalUnread = conversations.reduce((sum, conv) => sum + conv.unreadCount, 0);
+  const {
+    conversations,
+    totalUnreadCount,
+    isLoading,
+    connectionStatus,
+    error,
+    loadConversations,
+    connect,
+    disconnect,
+  } = useMessagingStore();
 
-  const handleOpenConversation = (conversation: Conversation) => {
-    // TODO: Navigate to conversation detail
-    console.log('Open conversation:', conversation.id);
+  // Load conversations and connect WebSocket on mount
+  useEffect(() => {
+    loadConversations();
+    connect();
+
+    return () => {
+      disconnect();
+    };
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  const handleOpenConversation = useCallback((conversation: Conversation) => {
+    router.push({
+      pathname: '/(tabs)/chat',
+      params: { conversationId: conversation.id },
+    });
+  }, []);
+
+  const handleStartSupport = useCallback(() => {
+    // Find or create support conversation
+    const supportConversation = conversations.find((c) => c.participantType === 'support');
+    if (supportConversation) {
+      handleOpenConversation(supportConversation);
+    } else {
+      // TODO: Create new support conversation
+      router.push({
+        pathname: '/(tabs)/chat',
+        params: { conversationId: 'conv_2' }, // Mock support conversation
+      });
+    }
+  }, [conversations, handleOpenConversation]);
+
+  const formatTimestamp = (dateStr?: string) => {
+    if (!dateStr) return '';
+
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
+
+  const renderConversation = useCallback(({ item: conversation }: { item: Conversation }) => (
+    <TouchableOpacity
+      style={styles.conversationItem}
+      onPress={() => handleOpenConversation(conversation)}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Conversation with ${conversation.participantName}. ${conversation.unreadCount > 0 ? `${conversation.unreadCount} unread messages` : ''}`}
+    >
+      <View style={styles.avatarContainer}>
+        <Avatar name={conversation.participantName} size="md" />
+        {conversation.isOnline && <View style={styles.onlineIndicator} />}
+      </View>
+
+      <View style={styles.conversationContent}>
+        <View style={styles.conversationHeader}>
+          <Text
+            style={[
+              styles.participantName,
+              conversation.unreadCount > 0 && styles.participantNameUnread,
+            ]}
+            numberOfLines={1}
+          >
+            {conversation.participantName}
+          </Text>
+          <Text style={styles.timestamp}>
+            {formatTimestamp(conversation.lastMessageAt)}
+          </Text>
+        </View>
+
+        <View style={styles.messageRow}>
+          <Text
+            style={[
+              styles.lastMessage,
+              conversation.unreadCount > 0 && styles.lastMessageUnread,
+            ]}
+            numberOfLines={2}
+          >
+            {conversation.lastMessage || 'No messages yet'}
+          </Text>
+          {conversation.unreadCount > 0 && (
+            <View style={styles.unreadCount}>
+              <Text style={styles.unreadCountText}>
+                {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <Badge
+          variant={conversation.participantType === 'lender' ? 'primary' : 'mint'}
+          size="small"
+          style={styles.typeBadge}
+        >
+          {conversation.participantType === 'lender' ? 'Lender' : 'Support'}
+        </Badge>
+      </View>
+    </TouchableOpacity>
+  ), [handleOpenConversation]);
+
+  const renderSeparator = () => <View style={styles.separator} />;
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="chatbubbles-outline" size={48} color={colors.textTertiary} />
+      <Text style={styles.emptyTitle}>No conversations yet</Text>
+      <Text style={styles.emptySubtitle}>
+        Share your report with a lender to start a conversation
+      </Text>
+    </View>
+  );
+
+  const renderError = () => (
+    <View style={styles.errorContainer}>
+      <Ionicons name="cloud-offline-outline" size={48} color={colors.error} />
+      <Text style={styles.errorTitle}>Unable to load messages</Text>
+      <Text style={styles.errorSubtitle}>{error}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+        <Text style={styles.retryButtonText}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + spacing[4], paddingBottom: insets.bottom + spacing[4] },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.title}>Messages</Text>
-            {totalUnread > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{totalUnread}</Text>
-              </View>
-            )}
-          </View>
-          <TouchableOpacity style={styles.composeButton}>
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing[4] }]}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.title}>Messages</Text>
+          {totalUnreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>
+                {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+              </Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.headerRight}>
+          {connectionStatus !== 'connected' && (
+            <View style={styles.connectionStatus}>
+              {connectionStatus === 'connecting' || connectionStatus === 'reconnecting' ? (
+                <ActivityIndicator size="small" color={colors.warning} />
+              ) : (
+                <Ionicons name="cloud-offline" size={18} color={colors.warning} />
+              )}
+            </View>
+          )}
+          <TouchableOpacity
+            style={styles.composeButton}
+            accessibilityLabel="Start new conversation"
+          >
             <Ionicons name="create-outline" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Quick help card */}
+      {/* Help card */}
+      <View style={styles.helpCardContainer}>
         <Card variant="mint" style={styles.helpCard}>
           <View style={styles.helpContent}>
             <View style={styles.helpIcon}>
@@ -112,110 +213,56 @@ export default function MessagesScreen() {
               <Text style={styles.helpTitle}>Need help?</Text>
               <Text style={styles.helpSubtitle}>Our support team is available 24/7</Text>
             </View>
-            <TouchableOpacity style={styles.helpButton}>
+            <TouchableOpacity style={styles.helpButton} onPress={handleStartSupport}>
               <Text style={styles.helpButtonText}>Chat</Text>
             </TouchableOpacity>
           </View>
         </Card>
+      </View>
 
-        {/* Conversations list */}
-        <View style={styles.conversationsSection}>
-          <Text style={styles.sectionTitle}>Conversations</Text>
+      {/* Conversations list */}
+      {error && !isLoading ? (
+        renderError()
+      ) : (
+        <FlatList
+          data={conversations}
+          renderItem={renderConversation}
+          keyExtractor={(item) => item.id}
+          ItemSeparatorComponent={renderSeparator}
+          ListEmptyComponent={isLoading ? null : renderEmpty}
+          contentContainerStyle={[
+            styles.listContent,
+            conversations.length === 0 && styles.listContentEmpty,
+            { paddingBottom: insets.bottom + spacing[4] },
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
-          {conversations.length === 0 ? (
-            <Card variant="outlined" style={styles.emptyCard}>
-              <Ionicons name="chatbubbles-outline" size={48} color={colors.textTertiary} />
-              <Text style={styles.emptyTitle}>No messages yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Connect with lenders to start conversations
-              </Text>
-            </Card>
-          ) : (
-            <Card variant="outlined" style={styles.conversationsCard}>
-              {conversations.map((conversation, index) => (
-                <TouchableOpacity
-                  key={conversation.id}
-                  style={[
-                    styles.conversationItem,
-                    index < conversations.length - 1 && styles.conversationItemBorder,
-                  ]}
-                  onPress={() => handleOpenConversation(conversation)}
-                >
-                  <View style={styles.avatarContainer}>
-                    <Avatar
-                      name={conversation.participantName}
-                      size="md"
-                    />
-                    {conversation.isOnline && <View style={styles.onlineIndicator} />}
-                  </View>
-
-                  <View style={styles.conversationContent}>
-                    <View style={styles.conversationHeader}>
-                      <Text
-                        style={[
-                          styles.participantName,
-                          conversation.unreadCount > 0 && styles.participantNameUnread,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {conversation.participantName}
-                      </Text>
-                      <Text style={styles.timestamp}>{conversation.timestamp}</Text>
-                    </View>
-
-                    <View style={styles.messageRow}>
-                      <Text
-                        style={[
-                          styles.lastMessage,
-                          conversation.unreadCount > 0 && styles.lastMessageUnread,
-                        ]}
-                        numberOfLines={2}
-                      >
-                        {conversation.lastMessage}
-                      </Text>
-                      {conversation.unreadCount > 0 && (
-                        <View style={styles.unreadCount}>
-                          <Text style={styles.unreadCountText}>
-                            {conversation.unreadCount}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {conversation.participantType === 'lender' && (
-                      <Badge variant="primary" size="small" style={styles.typeBadge}>
-                        Lender
-                      </Badge>
-                    )}
-                    {conversation.participantType === 'support' && (
-                      <Badge variant="mint" size="small" style={styles.typeBadge}>
-                        Support
-                      </Badge>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </Card>
-          )}
+      {/* Tips card - shown only when there are conversations */}
+      {conversations.length > 0 && (
+        <View style={[styles.tipsContainer, { paddingBottom: insets.bottom + spacing[2] }]}>
+          <Card variant="default" style={styles.tipsCard}>
+            <Text style={styles.tipsTitle}>Communication tips</Text>
+            <View style={styles.tip}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              <Text style={styles.tipText}>Respond promptly to lender inquiries</Text>
+            </View>
+            <View style={styles.tip}>
+              <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+              <Text style={styles.tipText}>Share updated reports when requested</Text>
+            </View>
+          </Card>
         </View>
-
-        {/* Tips */}
-        <Card variant="default" style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>Communication tips</Text>
-          <View style={styles.tip}>
-            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-            <Text style={styles.tipText}>Respond promptly to lender inquiries</Text>
-          </View>
-          <View style={styles.tip}>
-            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-            <Text style={styles.tipText}>Share updated reports when requested</Text>
-          </View>
-          <View style={styles.tip}>
-            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
-            <Text style={styles.tipText}>Ask questions about loan terms</Text>
-          </View>
-        </Card>
-      </ScrollView>
+      )}
     </View>
   );
 }
@@ -226,23 +273,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
 
-  scrollView: {
-    flex: 1,
-  },
-
-  content: {
-    paddingHorizontal: spacing[4],
-  },
-
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing[2],
-    marginBottom: spacing[6],
+    paddingHorizontal: spacing[4],
+    paddingBottom: spacing[4],
+    backgroundColor: colors.background,
   },
 
   headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -267,6 +312,11 @@ const styles = StyleSheet.create({
     ...textStyles.caption,
     color: colors.textInverse,
     fontWeight: '600',
+    fontSize: 11,
+  },
+
+  connectionStatus: {
+    marginRight: spacing[2],
   },
 
   composeButton: {
@@ -276,8 +326,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  helpCardContainer: {
+    paddingHorizontal: spacing[4],
+    marginBottom: spacing[4],
+  },
+
   helpCard: {
-    marginBottom: spacing[6],
+    marginBottom: 0,
   },
 
   helpContent: {
@@ -324,34 +379,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  conversationsSection: {
-    marginBottom: spacing[6],
+  listContent: {
+    paddingHorizontal: spacing[4],
   },
 
-  sectionTitle: {
-    ...textStyles.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing[3],
-    paddingHorizontal: spacing[2],
-  },
-
-  conversationsCard: {
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    overflow: 'hidden',
+  listContentEmpty: {
+    flex: 1,
+    justifyContent: 'center',
   },
 
   conversationItem: {
     flexDirection: 'row',
-    padding: spacing[4],
+    paddingVertical: spacing[4],
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+    marginBottom: spacing[2],
+    borderWidth: 1,
+    borderColor: colors.border,
   },
 
-  conversationItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  separator: {
+    height: spacing[2],
   },
 
   avatarContainer: {
@@ -437,9 +486,9 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
   },
 
-  emptyCard: {
+  emptyContainer: {
     alignItems: 'center',
-    paddingVertical: spacing[8],
+    padding: spacing[8],
   },
 
   emptyTitle: {
@@ -453,10 +502,54 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     marginTop: spacing[1],
     textAlign: 'center',
+    maxWidth: 250,
+  },
+
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing[8],
+  },
+
+  errorTitle: {
+    ...textStyles.body,
+    color: colors.textSecondary,
+    marginTop: spacing[3],
+  },
+
+  errorSubtitle: {
+    ...textStyles.caption,
+    color: colors.textTertiary,
+    marginTop: spacing[1],
+    textAlign: 'center',
+  },
+
+  retryButton: {
+    marginTop: spacing[4],
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[4],
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+  },
+
+  retryButtonText: {
+    ...textStyles.bodySmall,
+    color: colors.textInverse,
+    fontWeight: '600',
+  },
+
+  tipsContainer: {
+    paddingHorizontal: spacing[4],
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.background,
   },
 
   tipsCard: {
-    marginBottom: spacing[4],
+    marginBottom: 0,
   },
 
   tipsTitle: {

@@ -238,7 +238,7 @@ export default function DashboardScreen() {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.greeting}>
-              {getGreeting()}, {user?.firstName || 'there'}!
+              {getGreeting()}, {user?.first_name || 'there'}!
             </Text>
             <Text style={styles.headerSubtitle}>Your income story is building</Text>
           </View>
@@ -246,7 +246,7 @@ export default function DashboardScreen() {
             style={styles.profileButton}
             onPress={() => router.push('/(tabs)/profile')}
           >
-            <Avatar name={user?.firstName || 'U'} size="md" />
+            <Avatar name={user?.first_name || 'U'} size="md" />
           </TouchableOpacity>
         </View>
 

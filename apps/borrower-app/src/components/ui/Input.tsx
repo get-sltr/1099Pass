@@ -17,13 +17,14 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, borderRadius, spacing, layout, textStyles, fontFamilies } from '../../theme';
 
-interface InputProps extends Omit<TextInputProps, 'style'> {
+export interface InputProps extends Omit<TextInputProps, 'style'> {
   label?: string;
   error?: string;
   hint?: string;
   leftIcon?: keyof typeof Ionicons.glyphMap;
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
+  style?: StyleProp<ViewStyle>; // Alias for containerStyle
   containerStyle?: StyleProp<ViewStyle>;
   inputStyle?: StyleProp<ViewStyle>;
   showPasswordToggle?: boolean;
@@ -39,6 +40,7 @@ export const Input = forwardRef<TextInput, InputProps>(
       leftIcon,
       rightIcon,
       onRightIconPress,
+      style,
       containerStyle,
       inputStyle,
       showPasswordToggle = false,
@@ -78,7 +80,7 @@ export const Input = forwardRef<TextInput, InputProps>(
     ];
 
     return (
-      <View style={[styles.container, containerStyle]}>
+      <View style={[styles.container, containerStyle, style]}>
         {label && (
           <View style={styles.labelContainer}>
             <Text style={styles.label}>

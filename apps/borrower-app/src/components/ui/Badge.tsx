@@ -17,8 +17,9 @@ import { colors, borderRadius, spacing, textStyles } from '../../theme';
 export type BadgeVariant = 'mint' | 'amber' | 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'primary';
 export type BadgeSize = 'small' | 'medium' | 'large';
 
-interface BadgeProps {
-  label: string;
+export interface BadgeProps {
+  label?: string;
+  children?: React.ReactNode;
   variant?: BadgeVariant;
   size?: BadgeSize;
   icon?: React.ReactNode;
@@ -28,31 +29,34 @@ interface BadgeProps {
 
 export function Badge({
   label,
+  children,
   variant = 'neutral',
   size = 'medium',
   icon,
   style,
   textStyle,
 }: BadgeProps) {
-  const badgeStyles = [
+  const displayText = label || (typeof children === 'string' ? children : '');
+
+  const badgeStyles: StyleProp<ViewStyle> = [
     styles.base,
-    styles[variant],
-    styles[size],
+    variantStyles[variant],
+    sizeStyles[size],
     style,
   ];
 
-  const labelStyles = [
+  const labelStyles: StyleProp<TextStyle> = [
     styles.text,
-    styles[`${variant}Text` as keyof typeof styles],
-    styles[`${size}Text` as keyof typeof styles],
+    variantTextStyles[variant],
+    sizeTextStyles[size],
     textStyle,
   ];
 
   return (
-    <View style={badgeStyles} accessibilityRole="text" accessibilityLabel={label}>
+    <View style={badgeStyles} accessibilityRole="text" accessibilityLabel={displayText}>
       {icon && <View style={styles.icon}>{icon}</View>}
       <Text style={labelStyles} numberOfLines={1}>
-        {label}
+        {displayText || children}
       </Text>
     </View>
   );
@@ -77,7 +81,7 @@ export function DotBadge({
       style={[
         styles.dot,
         { width: dotSize, height: dotSize, borderRadius: dotSize / 2 },
-        styles[`${variant}Dot` as keyof typeof styles] || styles.neutralDot,
+        dotStyles[variant] || styles.neutralDot,
         style,
       ]}
     />
@@ -226,5 +230,51 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
 });
+
+// Style mappings for type safety (defined after styles)
+const variantStyles: Record<BadgeVariant, ViewStyle> = {
+  mint: styles.mint,
+  amber: styles.amber,
+  success: styles.success,
+  warning: styles.warning,
+  error: styles.error,
+  info: styles.info,
+  neutral: styles.neutral,
+  primary: styles.primary,
+};
+
+const sizeStyles: Record<BadgeSize, ViewStyle> = {
+  small: styles.small,
+  medium: styles.medium,
+  large: styles.large,
+};
+
+const variantTextStyles: Record<BadgeVariant, TextStyle> = {
+  mint: styles.mintText,
+  amber: styles.amberText,
+  success: styles.successText,
+  warning: styles.warningText,
+  error: styles.errorText,
+  info: styles.infoText,
+  neutral: styles.neutralText,
+  primary: styles.primaryText,
+};
+
+const sizeTextStyles: Record<BadgeSize, TextStyle> = {
+  small: styles.smallText,
+  medium: styles.mediumText,
+  large: styles.largeText,
+};
+
+const dotStyles: Record<BadgeVariant, ViewStyle> = {
+  mint: styles.mintDot,
+  amber: styles.amberDot,
+  success: styles.successDot,
+  warning: styles.warningDot,
+  error: styles.errorDot,
+  info: styles.infoDot,
+  neutral: styles.neutralDot,
+  primary: styles.primaryDot,
+};
 
 export default Badge;

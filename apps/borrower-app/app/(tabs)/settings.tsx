@@ -3,7 +3,7 @@
  * App settings and account management
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,8 +16,9 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Avatar, Badge, Modal, Button, useToast } from '../../src/components/ui';
+import { Card, Avatar, Badge, Modal, Button, useToast, ConfirmModal } from '../../src/components/ui';
 import { useAuthStore } from '../../src/store';
+import { useSubscriptionStore } from '../../src/store/subscription-store';
 import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
 
 interface SettingItem {
@@ -43,12 +44,21 @@ interface SettingToggle {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
+  const { currentSubscription, loadSubscription } = useSubscriptionStore();
   const { showToast } = useToast();
 
   const [pushNotifications, setPushNotifications] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [biometricLogin, setBiometricLogin] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Load subscription on mount
+  useEffect(() => {
+    loadSubscription();
+  }, []);
 
   const handleLogout = async () => {
     setShowLogoutModal(false);
@@ -213,28 +223,52 @@ export default function SettingsScreen() {
       icon: 'trash-outline',
       label: 'Delete Account',
       onPress: () => {
-        Alert.alert(
-          'Delete Account',
-          'This action cannot be undone. All your data will be permanently deleted.',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Delete',
-              style: 'destructive',
-              onPress: () => {
-                showToast({
-                  type: 'info',
-                  title: 'Coming soon',
-                  message: 'Account deletion will be available soon',
-                });
-              },
-            },
-          ]
-        );
+        setDeleteConfirmStep(1);
+        setShowDeleteModal(true);
       },
       dangerous: true,
     },
   ];
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmStep === 1) {
+      setDeleteConfirmStep(2);
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // TODO: Call API to delete account
+      // await api.delete('/user/account');
+
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+
+      setShowDeleteModal(false);
+      await logout();
+      router.replace('/(auth)/welcome');
+
+      showToast({
+        type: 'info',
+        title: 'Account deleted',
+        message: 'Your account and all data have been permanently deleted',
+      });
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to delete account. Please try again.',
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirmStep(0);
+    }
+  };
+
+  const getPlanDisplayName = () => {
+    const tier = currentSubscription?.tier || 'FREE';
+    return tier.charAt(0) + tier.slice(1).toLowerCase();
+  };
 
   const renderSettingItem = (item: SettingItem) => (
     <TouchableOpacity
@@ -307,17 +341,47 @@ export default function SettingsScreen() {
           <TouchableOpacity
             style={styles.profileContent}
             onPress={() => router.push('/(tabs)/profile')}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
           >
-            <Avatar name={user?.firstName || 'U'} size="lg" />
+            <Avatar name={user?.first_name || 'U'} size="lg" />
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>
-                {user?.firstName} {user?.lastName}
+                {user?.first_name} {user?.last_name}
               </Text>
               <Text style={styles.profileEmail}>{user?.email}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
           </TouchableOpacity>
         </Card>
+
+        {/* Subscription */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subscription</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/(tabs)/subscription')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={`Current plan: ${getPlanDisplayName()}. Tap to manage subscription.`}
+          >
+            <Card variant="mint" style={styles.subscriptionCard}>
+              <View style={styles.subscriptionContent}>
+                <View style={styles.subscriptionIcon}>
+                  <Ionicons name="star" size={20} color={colors.secondary} />
+                </View>
+                <View style={styles.subscriptionInfo}>
+                  <Text style={styles.subscriptionPlan}>{getPlanDisplayName()} Plan</Text>
+                  <Text style={styles.subscriptionStatus}>
+                    {currentSubscription?.tier === 'FREE'
+                      ? 'Upgrade to unlock more features'
+                      : 'Manage your subscription'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+              </View>
+            </Card>
+          </TouchableOpacity>
+        </View>
 
         {/* Account settings */}
         <View style={styles.section}>
@@ -443,6 +507,77 @@ export default function SettingsScreen() {
               variant="danger"
               size="medium"
               style={styles.modalButton}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete account confirmation modal */}
+      <Modal
+        visible={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setDeleteConfirmStep(0);
+        }}
+        title={deleteConfirmStep === 1 ? 'Delete Account' : 'Final Confirmation'}
+      >
+        <View style={styles.modalContent}>
+          {deleteConfirmStep === 1 ? (
+            <>
+              <View style={styles.warningIcon}>
+                <Ionicons name="warning" size={32} color={colors.error} />
+              </View>
+              <Text style={styles.deleteWarningTitle}>This will permanently delete:</Text>
+              <View style={styles.deleteList}>
+                <View style={styles.deleteListItem}>
+                  <Ionicons name="close-circle" size={16} color={colors.error} />
+                  <Text style={styles.deleteListText}>Your income verification reports</Text>
+                </View>
+                <View style={styles.deleteListItem}>
+                  <Ionicons name="close-circle" size={16} color={colors.error} />
+                  <Text style={styles.deleteListText}>All uploaded documents</Text>
+                </View>
+                <View style={styles.deleteListItem}>
+                  <Ionicons name="close-circle" size={16} color={colors.error} />
+                  <Text style={styles.deleteListText}>Connected account data</Text>
+                </View>
+                <View style={styles.deleteListItem}>
+                  <Ionicons name="close-circle" size={16} color={colors.error} />
+                  <Text style={styles.deleteListText}>Message history with lenders</Text>
+                </View>
+              </View>
+              <Text style={styles.deleteWarning}>This action cannot be undone.</Text>
+            </>
+          ) : (
+            <>
+              <View style={styles.warningIcon}>
+                <Ionicons name="alert-circle" size={32} color={colors.error} />
+              </View>
+              <Text style={styles.deleteWarningTitle}>Are you absolutely sure?</Text>
+              <Text style={styles.modalText}>
+                Type DELETE to confirm. Once deleted, your data cannot be recovered.
+              </Text>
+            </>
+          )}
+          <View style={styles.modalButtons}>
+            <Button
+              title="Cancel"
+              onPress={() => {
+                setShowDeleteModal(false);
+                setDeleteConfirmStep(0);
+              }}
+              variant="ghost"
+              size="medium"
+              style={styles.modalButton}
+              disabled={isDeleting}
+            />
+            <Button
+              title={isDeleting ? 'Deleting...' : deleteConfirmStep === 1 ? 'Continue' : 'Delete Forever'}
+              onPress={handleDeleteAccount}
+              variant="danger"
+              size="medium"
+              style={styles.modalButton}
+              disabled={isDeleting}
             />
           </View>
         </View>
@@ -597,5 +732,76 @@ const styles = StyleSheet.create({
 
   modalButton: {
     flex: 1,
+  },
+
+  subscriptionCard: {
+    marginBottom: 0,
+  },
+
+  subscriptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  subscriptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.amberSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing[3],
+  },
+
+  subscriptionInfo: {
+    flex: 1,
+  },
+
+  subscriptionPlan: {
+    ...textStyles.body,
+    color: colors.textPrimary,
+    fontWeight: '600',
+  },
+
+  subscriptionStatus: {
+    ...textStyles.caption,
+    color: colors.textSecondary,
+    marginTop: spacing[0.5],
+  },
+
+  warningIcon: {
+    alignItems: 'center',
+    marginBottom: spacing[4],
+  },
+
+  deleteWarningTitle: {
+    ...textStyles.h4,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing[3],
+  },
+
+  deleteList: {
+    marginBottom: spacing[4],
+  },
+
+  deleteListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing[2],
+  },
+
+  deleteListText: {
+    ...textStyles.bodySmall,
+    color: colors.textSecondary,
+    marginLeft: spacing[2],
+  },
+
+  deleteWarning: {
+    ...textStyles.bodySmall,
+    color: colors.error,
+    textAlign: 'center',
+    fontWeight: '600',
+    marginBottom: spacing[4],
   },
 });

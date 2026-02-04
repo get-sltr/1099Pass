@@ -102,6 +102,18 @@ export default function TabsLayout() {
           href: null, // Hide from tab bar (accessed from settings)
         }}
       />
+      <Tabs.Screen
+        name="chat"
+        options={{
+          href: null, // Hide from tab bar (accessed from messages)
+        }}
+      />
+      <Tabs.Screen
+        name="subscription"
+        options={{
+          href: null, // Hide from tab bar (accessed from settings)
+        }}
+      />
     </Tabs>
   );
 }

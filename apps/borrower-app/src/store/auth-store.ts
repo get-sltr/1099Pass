@@ -8,6 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import type { Borrower } from '@1099pass/shared';
 import { SubscriptionTier, KYCStatus } from '@1099pass/shared';
 import { api } from '../services/api';
+import { USE_MOCKS } from '../config';
 
 // Extended Borrower type for app-specific fields
 interface AppUser {
@@ -72,10 +73,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
 
     try {
-      // For development, use mock auth if API is not available
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         // Mock successful login for development
         const mockUser: AppUser = {
           id: 'mock-user-123',
@@ -140,9 +138,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         // Mock successful signup for development
         const mockUser: AppUser = {
           id: 'mock-user-' + Date.now(),

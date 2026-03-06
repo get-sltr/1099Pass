@@ -1,5 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -7,6 +8,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import { Construct } from 'constructs';
+import * as path from 'path';
 
 export interface ComputeStackProps extends cdk.StackProps {
   environment: string;
@@ -18,6 +20,11 @@ export interface ComputeStackProps extends cdk.StackProps {
   reportsBucket: s3.IBucket;
   api: apigateway.RestApi;
   authorizer: apigateway.CognitoUserPoolsAuthorizer;
+  /** Cognito User Pool ID (for login Lambda) */
+  userPoolId: string;
+  /** Cognito app client IDs (for login Lambda) */
+  cognitoBorrowerClientId: string;
+  cognitoLenderClientId: string;
 }
 
 export class ComputeStack extends cdk.Stack {
@@ -34,17 +41,6 @@ export class ComputeStack extends cdk.Stack {
       KMS_KEY_ID: props.encryptionKey.keyId,
     };
 
-    const lambdaProps = {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      memorySize: 256,
-      timeout: cdk.Duration.seconds(30),
-      vpc: props.vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
-      securityGroups: [props.lambdaSg],
-      environment: commonEnv,
-      tracing: lambda.Tracing.ACTIVE,
-    };
-
     // Define API resources
     const authResource = props.api.root.addResource('auth');
     const borrowersResource = props.api.root.addResource('borrowers');
@@ -53,62 +49,148 @@ export class ComputeStack extends cdk.Stack {
     const reportsResource = props.api.root.addResource('reports');
     props.api.root.addResource('lenders');
     props.api.root.addResource('messages');
+    const aiResource = props.api.root.addResource('ai');
+
+    // Resolve API handlers path (repo root = 1099Pass/1099Pass; from lib/stacks use 3 levels up)
+    const apiHandlersRoot = path.join(__dirname, '..', '..', '..', 'packages', 'api', 'src', 'handlers');
+
+    const nodejsDefaults: Partial<lambdaNodejs.NodejsFunctionProps> = {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      memorySize: 256,
+      timeout: cdk.Duration.seconds(30),
+      vpc: props.vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+      securityGroups: [props.lambdaSg],
+      environment: commonEnv,
+      tracing: lambda.Tracing.ACTIVE,
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        forceDockerBundling: false,
+      },
+    };
 
     const methodOptions: apigateway.MethodOptions = {
       authorizer: props.authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
     };
 
+    // Health check (public, no auth)
+    const healthFn = new lambdaNodejs.NodejsFunction(this, 'HealthFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-health`,
+      entry: path.join(apiHandlersRoot, 'health', 'index.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.seconds(5),
+    });
+    props.api.root.addResource('health').addMethod('GET', new apigateway.LambdaIntegration(healthFn));
+    this.lambdaFunctions.push(healthFn);
+
+    // Rates (public, no auth) — FRED conventional + non-QM ranges
+    const ratesFn = new lambdaNodejs.NodejsFunction(this, 'RatesFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-rates`,
+      entry: path.join(apiHandlersRoot, 'rates', 'index.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        ...commonEnv,
+        FRED_API_KEY: process.env.FRED_API_KEY ?? '',
+      },
+    });
+    props.api.root.addResource('rates').addMethod('GET', new apigateway.LambdaIntegration(ratesFn));
+    this.lambdaFunctions.push(ratesFn);
+
     // Auth handlers
-    const registerFn = new lambda.Function(this, 'RegisterFn', {
-      ...lambdaProps,
+    const registerFn = new lambdaNodejs.NodejsFunction(this, 'RegisterFn', {
+      ...nodejsDefaults,
       functionName: `pass1099-${props.environment}-auth-register`,
-      handler: 'register.handler',
-      code: lambda.Code.fromAsset('../packages/api/dist/handlers/auth'),
+      entry: path.join(apiHandlersRoot, 'auth', 'register.ts'),
+      handler: 'handler',
     });
     authResource.addResource('register').addMethod('POST', new apigateway.LambdaIntegration(registerFn));
     this.lambdaFunctions.push(registerFn);
 
-    const loginFn = new lambda.Function(this, 'LoginFn', {
-      ...lambdaProps,
+    const loginFn = new lambdaNodejs.NodejsFunction(this, 'LoginFn', {
+      ...nodejsDefaults,
       functionName: `pass1099-${props.environment}-auth-login`,
-      handler: 'login.handler',
-      code: lambda.Code.fromAsset('../packages/api/dist/handlers/auth'),
+      entry: path.join(apiHandlersRoot, 'auth', 'login.ts'),
+      handler: 'handler',
+      environment: {
+        ...commonEnv,
+        USER_POOL_ID: props.userPoolId,
+        COGNITO_BORROWER_CLIENT_ID: props.cognitoBorrowerClientId,
+        COGNITO_LENDER_CLIENT_ID: props.cognitoLenderClientId,
+      },
     });
     authResource.addResource('login').addMethod('POST', new apigateway.LambdaIntegration(loginFn));
     this.lambdaFunctions.push(loginFn);
 
     // Borrower handlers
-    const getProfileFn = new lambda.Function(this, 'GetProfileFn', {
-      ...lambdaProps,
+    const getProfileFn = new lambdaNodejs.NodejsFunction(this, 'GetProfileFn', {
+      ...nodejsDefaults,
       functionName: `pass1099-${props.environment}-borrower-get-profile`,
-      handler: 'get-profile.handler',
-      code: lambda.Code.fromAsset('../packages/api/dist/handlers/borrower'),
+      entry: path.join(apiHandlersRoot, 'borrower', 'get-profile.ts'),
+      handler: 'handler',
     });
     borrowersResource.addResource('me').addMethod('GET', new apigateway.LambdaIntegration(getProfileFn), methodOptions);
     this.lambdaFunctions.push(getProfileFn);
 
     // Reports handlers
-    const generateReportFn = new lambda.Function(this, 'GenerateReportFn', {
-      ...lambdaProps,
+    const generateReportFn = new lambdaNodejs.NodejsFunction(this, 'GenerateReportFn', {
+      ...nodejsDefaults,
       functionName: `pass1099-${props.environment}-reports-generate`,
-      handler: 'generate-report.handler',
-      code: lambda.Code.fromAsset('../packages/api/dist/handlers/reports'),
+      entry: path.join(apiHandlersRoot, 'reports', 'generate.ts'),
+      handler: 'handler',
     });
     reportsResource.addMethod('POST', new apigateway.LambdaIntegration(generateReportFn), methodOptions);
     this.lambdaFunctions.push(generateReportFn);
 
-    const listReportsFn = new lambda.Function(this, 'ListReportsFn', {
-      ...lambdaProps,
+    const listReportsFn = new lambdaNodejs.NodejsFunction(this, 'ListReportsFn', {
+      ...nodejsDefaults,
       functionName: `pass1099-${props.environment}-reports-list`,
-      handler: 'list-reports.handler',
-      code: lambda.Code.fromAsset('../packages/api/dist/handlers/reports'),
+      entry: path.join(apiHandlersRoot, 'reports', 'list.ts'),
+      handler: 'handler',
     });
     reportsResource.addMethod('GET', new apigateway.LambdaIntegration(listReportsFn), methodOptions);
     this.lambdaFunctions.push(listReportsFn);
 
+    // AI handlers (Bedrock) — 512MB, 60s timeout
+    const aiLambdaProps = {
+      ...nodejsDefaults,
+      memorySize: 512,
+      timeout: cdk.Duration.seconds(60),
+    };
+    const chatFn = new lambdaNodejs.NodejsFunction(this, 'AiChatFn', {
+      ...aiLambdaProps,
+      functionName: `pass1099-${props.environment}-ai-chat`,
+      entry: path.join(apiHandlersRoot, 'ai', 'chat.ts'),
+      handler: 'handler',
+    });
+    aiResource.addResource('chat').addMethod('POST', new apigateway.LambdaIntegration(chatFn), methodOptions);
+    this.lambdaFunctions.push(chatFn);
+
+    const analyzeDocumentFn = new lambdaNodejs.NodejsFunction(this, 'AiAnalyzeDocumentFn', {
+      ...aiLambdaProps,
+      functionName: `pass1099-${props.environment}-ai-analyze-document`,
+      entry: path.join(apiHandlersRoot, 'ai', 'analyze-document.ts'),
+      handler: 'handler',
+    });
+    aiResource.addResource('analyze-document').addMethod('POST', new apigateway.LambdaIntegration(analyzeDocumentFn), methodOptions);
+    this.lambdaFunctions.push(analyzeDocumentFn);
+
     // Grant permissions via IAM policies (avoids cross-stack key policy dependencies)
-    const allFunctions = [registerFn, loginFn, getProfileFn, generateReportFn, listReportsFn];
+    const allFunctions = [
+      healthFn,
+      ratesFn,
+      registerFn,
+      loginFn,
+      getProfileFn,
+      generateReportFn,
+      listReportsFn,
+      chatFn,
+      analyzeDocumentFn,
+    ];
 
     // Grant secrets manager and KMS access via IAM
     allFunctions.forEach(fn => {
@@ -122,8 +204,20 @@ export class ComputeStack extends cdk.Stack {
       }));
     });
 
+    // Bedrock permissions for AI Lambdas
+    [chatFn, analyzeDocumentFn].forEach(fn => {
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+        resources: [
+          'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-*',
+          'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-*',
+        ],
+      }));
+    });
+
     props.documentsBucket.grantReadWrite(generateReportFn);
     props.reportsBucket.grantReadWrite(generateReportFn);
+    props.reportsBucket.grantRead(listReportsFn);
 
     // Additional KMS permissions for report generation
     generateReportFn.addToRolePolicy(new iam.PolicyStatement({

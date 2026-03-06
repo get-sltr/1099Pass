@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Link, router } from 'expo-router';
+import { colors } from '../../src/theme';
 
 export default function RegisterScreen() {
   const [firstName, setFirstName] = useState('');
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.background,
   },
   header: {
     marginTop: 60,
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: colors.mintSoft,
     borderRadius: 8,
     padding: 16,
     fontSize: 16,

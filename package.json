@@ -11,6 +11,8 @@
     "infrastructure"
   ],
   "scripts": {
+    "start": "cd apps/borrower-app && npx expo start",
+    "start:lender": "npm run dev --workspace=@1099pass/lender-portal",
     "build": "npm run build --workspaces --if-present",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
@@ -20,13 +22,12 @@
     "clean": "npm run clean --workspaces --if-present && rm -rf node_modules"
   },
   "overrides": {
-    "react": "$react",
-    "react-dom": "$react-dom"
+    "@types/react": "~19.1.0",
+    "@types/react-dom": "~19.1.0",
+    "next": "14.2.35",
+    "eslint-config-next": "14.2.35"
   },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",

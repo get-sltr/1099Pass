@@ -19,17 +19,22 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Badge, Avatar } from '../../src/components/ui';
-import { useAuthStore } from '../../src/store';
+import { useAuthStore, useProfileStore } from '../../src/store';
+import { USE_MOCKS } from '../../src/config';
 import { colors, spacing, textStyles, borderRadius, getScoreColor, getLetterGrade } from '../../src/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Animated score gauge component
-function ScoreGauge({ score }: { score: number }) {
+// Animated score gauge component; use empty state when no real score yet
+function ScoreGauge({ score, empty }: { score: number; empty?: boolean }) {
   const animatedValue = useRef(new Animated.Value(0)).current;
   const [displayScore, setDisplayScore] = useState(0);
 
   useEffect(() => {
+    if (empty) {
+      setDisplayScore(0);
+      return;
+    }
     Animated.timing(animatedValue, {
       toValue: score,
       duration: 1200,
@@ -44,25 +49,31 @@ function ScoreGauge({ score }: { score: number }) {
     return () => {
       animatedValue.removeAllListeners();
     };
-  }, [score]);
+  }, [score, empty]);
 
-  const letterGrade = getLetterGrade(displayScore);
-  const scoreColor = getScoreColor(letterGrade);
+  const letterGrade = empty ? '—' : getLetterGrade(displayScore);
+  const scoreColor = empty ? colors.textTertiary : getScoreColor(getLetterGrade(displayScore));
 
   return (
     <View style={styles.gaugeWrapper}>
       <View style={[styles.gaugeCircle, { borderColor: scoreColor }]}>
         <View style={[styles.gaugeInnerCircle, { backgroundColor: `${scoreColor}15` }]}>
-          <Text style={[styles.scoreNumber, { color: scoreColor }]}>{displayScore}</Text>
+          <Text style={[styles.scoreNumber, { color: scoreColor }]}>
+            {empty ? '—' : displayScore}
+          </Text>
           <Text style={[styles.scoreGrade, { color: scoreColor }]}>{letterGrade}</Text>
         </View>
       </View>
       <View style={styles.scoreMeta}>
         <Text style={styles.scoreLabel}>Loan Readiness</Text>
-        <View style={styles.scoreTrend}>
-          <Ionicons name="trending-up" size={14} color={colors.success} />
-          <Text style={styles.scoreTrendText}>+12 this month</Text>
-        </View>
+        {empty ? (
+          <Text style={styles.scoreEmptyHint}>Connect income to get your score</Text>
+        ) : (
+          <View style={styles.scoreTrend}>
+            <Ionicons name="trending-up" size={14} color={colors.success} />
+            <Text style={styles.scoreTrendText}>+12 this month</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -193,20 +204,28 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
+  const { financialProfile, incomeSources, loadProfile } = useProfileStore();
   const [refreshing, setRefreshing] = useState(false);
 
-  // Mock data
-  const score = 682;
-  const monthlyIncome = 4250;
-  const incomeChange = 12.5;
-  const connectedSources = 3;
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
+
+  // Use real data when available; in mock mode or before setup, show "no score yet"
+  const hasRealScore = !USE_MOCKS && financialProfile && financialProfile.loanReadinessScore > 0;
+  const score = hasRealScore ? financialProfile!.loanReadinessScore : 0;
+  const showEmptyScore = USE_MOCKS || !hasRealScore;
+
+  const monthlyIncome = financialProfile?.monthlyAverage ?? 0;
+  const incomeChange = financialProfile?.incomeTrend === 'increasing' ? 12.5 : 0;
+  const connectedSources = incomeSources?.filter((s) => s.connected).length ?? 0;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // TODO: Refresh data from API
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await loadProfile();
+    await new Promise((resolve) => setTimeout(resolve, 300));
     setRefreshing(false);
-  }, []);
+  }, [loadProfile]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -252,7 +271,7 @@ export default function DashboardScreen() {
 
         {/* Score card */}
         <Card variant="default" style={styles.scoreCard}>
-          <ScoreGauge score={score} />
+          <ScoreGauge score={score} empty={showEmptyScore} />
         </Card>
 
         {/* Income summary */}
@@ -260,24 +279,34 @@ export default function DashboardScreen() {
           <Text style={styles.sectionTitle}>Monthly Income</Text>
           <Card variant="mint" style={styles.incomeCard}>
             <View style={styles.incomeMain}>
-              <Text style={styles.incomeAmount}>{formatCurrency(monthlyIncome)}</Text>
-              <Badge
-                variant={incomeChange >= 0 ? 'success' : 'error'}
-                size="small"
-              >
-                {incomeChange >= 0 ? '+' : ''}{incomeChange}%
-              </Badge>
+              <Text style={styles.incomeAmount}>
+                {showEmptyScore ? '—' : formatCurrency(monthlyIncome)}
+              </Text>
+              {!showEmptyScore && incomeChange !== 0 && (
+                <Badge
+                  variant={incomeChange >= 0 ? 'success' : 'error'}
+                  size="small"
+                >
+                  {incomeChange >= 0 ? '+' : ''}{incomeChange}%
+                </Badge>
+              )}
             </View>
             <Text style={styles.incomeSubtext}>
-              From {connectedSources} verified sources
+              {showEmptyScore
+                ? 'Connect bank or income sources to see your income'
+                : `From ${connectedSources} verified source${connectedSources !== 1 ? 's' : ''}`}
             </Text>
-            <View style={styles.incomeBar}>
-              <View style={[styles.incomeBarFill, { width: '75%' }]} />
-            </View>
-            <View style={styles.incomeBarLabels}>
-              <Text style={styles.incomeBarLabel}>$0</Text>
-              <Text style={styles.incomeBarLabel}>Goal: $5,000</Text>
-            </View>
+            {!showEmptyScore && (
+              <>
+                <View style={styles.incomeBar}>
+                  <View style={[styles.incomeBarFill, { width: `${Math.min(100, (monthlyIncome / 5000) * 100)}%` }]} />
+                </View>
+                <View style={styles.incomeBarLabels}>
+                  <Text style={styles.incomeBarLabel}>$0</Text>
+                  <Text style={styles.incomeBarLabel}>Goal: $5,000</Text>
+                </View>
+              </>
+            )}
           </Card>
         </View>
 
@@ -448,6 +477,12 @@ const styles = StyleSheet.create({
   scoreTrend: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+
+  scoreEmptyHint: {
+    ...textStyles.caption,
+    color: colors.textTertiary,
+    marginTop: spacing[1],
   },
 
   scoreTrendText: {

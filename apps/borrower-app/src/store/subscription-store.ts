@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';
+import { USE_MOCKS } from '../config';
 
 // Types
 export type SubscriptionTier = 'FREE' | 'PLUS' | 'PRO';
@@ -187,9 +188,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set({
           currentSubscription: MOCK_SUBSCRIPTION,
@@ -214,9 +213,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
   loadBillingHistory: async () => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         set({ billingHistory: MOCK_BILLING_HISTORY });
         return;
@@ -231,9 +228,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
 
   loadUsageStats: async () => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         set({ usageStats: MOCK_USAGE_STATS });
         return;
@@ -250,9 +245,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const plan = SUBSCRIPTION_PLANS.find((p) => p.id === tier);
@@ -295,9 +288,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const plan = SUBSCRIPTION_PLANS.find((p) => p.id === tier);
@@ -338,9 +329,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         set((state) => ({
           currentSubscription: state.currentSubscription
@@ -370,9 +359,7 @@ export const useSubscriptionStore = create<SubscriptionState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         set((state) => ({
           currentSubscription: state.currentSubscription

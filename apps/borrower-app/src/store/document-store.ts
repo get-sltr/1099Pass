@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';
+import { USE_MOCKS } from '../config';
 
 // Types
 export type DocumentType =
@@ -130,9 +131,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         set({ documents: JSON.parse(cached) });
       }
 
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set({
           documents: MOCK_DOCUMENTS,
@@ -169,8 +168,6 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
     }));
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
       // Update progress to uploading
       set((state) => ({
         uploadQueue: state.uploadQueue.map((u) =>
@@ -178,7 +175,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
         ),
       }));
 
-      if (isDev) {
+      if (USE_MOCKS) {
         // Simulate upload progress
         for (let i = 0; i <= 100; i += 20) {
           await new Promise((resolve) => setTimeout(resolve, 200));
@@ -262,9 +259,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   deleteDocument: async (documentId) => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set((state) => ({
           documents: state.documents.filter((d) => d.id !== documentId),
@@ -285,9 +280,7 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
 
   getDocumentUrl: async (documentId) => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 200));
         return `https://1099pass.com/documents/${documentId}/download`;
       }

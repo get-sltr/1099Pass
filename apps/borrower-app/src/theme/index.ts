@@ -8,6 +8,7 @@
 export * from './colors';
 export * from './typography';
 export * from './spacing';
+export * from './dualThemes';
 
 import { colors } from './colors';
 import { fontFamilies, fontSizes, fontWeights, lineHeights, letterSpacing, textStyles } from './typography';

@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';
+import { USE_MOCKS } from '../config';
 
 // Types
 export type LoanType = 'mortgage' | 'auto' | 'personal' | 'business' | 'refinance' | 'home_equity';
@@ -187,9 +188,7 @@ export const useLenderStore = create<LenderState>((set, get) => ({
         set({ lenders, filteredLenders: lenders });
       }
 
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set({
           lenders: MOCK_LENDERS,
@@ -307,9 +306,7 @@ export const useLenderStore = create<LenderState>((set, get) => ({
 
   contactLender: async (lenderId, message) => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         // Would create a conversation in messaging store
         return;

@@ -648,7 +648,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.mintSoft,
   },
 
   captureText: {
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.mintSoft,
   },
 
   selfiePreview: {
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
 
   processingSteps: {
     alignSelf: 'stretch',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.mintSoft,
     borderRadius: borderRadius.lg,
     padding: spacing[4],
   },

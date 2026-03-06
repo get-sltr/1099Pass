@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -119,6 +120,15 @@ export default function LoginScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
+        {/* Logo */}
+        <View style={styles.logoWrapper}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+            accessibilityLabel="1099Pass logo"
+          />
+        </View>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Welcome Back</Text>
@@ -241,6 +251,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing[2],
   },
 
+  logoWrapper: {
+    width: 180,
+    height: 72,
+    backgroundColor: '#000',
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignSelf: 'center',
+    marginBottom: spacing[6],
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
   header: {
     marginBottom: spacing[8],
   },

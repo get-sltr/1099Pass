@@ -13,7 +13,7 @@ We need to select a technology stack for 1099Pass that:
 - Scales cost-effectively with usage
 - Enables rapid development with a small team
 - Meets security requirements for financial data
-- Integrates with third-party financial services (Plaid, Stripe)
+- Integrates with third-party financial services (Plaid, Square)
 
 ## Decision
 

@@ -1,7 +1,10 @@
-version: 0.2
-
 # AWS CodeBuild buildspec for 1099Pass CI/CD
 # Runs tests, builds artifacts, and deploys to environments
+#
+# Note: Lender portal is served from S3 + CloudFront. This build produces
+# standalone output (for Node). To update the live site (1099pass.com),
+# run BUILD_FOR_S3=true build and sync out/ to the portal bucket — see
+# docs/DEPLOY-LENDER-PORTAL.md and ./scripts/deploy-lender-portal.sh
 
 env:
   variables:

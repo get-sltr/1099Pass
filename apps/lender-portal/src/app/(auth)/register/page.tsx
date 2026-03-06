@@ -101,6 +101,7 @@ export default function RegisterPage() {
           </div>
         </div>
 
+        <p className="text-sm text-primary-foreground/60 font-medium">Stand by for the biggest update we&apos;re going to make.</p>
         <p className="text-sm text-primary-foreground/60">
           © 2024 1099Pass. All rights reserved.
         </p>

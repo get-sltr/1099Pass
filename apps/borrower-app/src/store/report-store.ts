@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';
+import { USE_MOCKS } from '../config';
 
 // Types
 export type ReportStatus = 'generating' | 'active' | 'expired' | 'revoked';
@@ -147,9 +148,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
         set({ reports: JSON.parse(cached) });
       }
 
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set({
           reports: MOCK_REPORTS,
@@ -183,9 +182,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
         return localReport;
       }
 
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         const mockReport = MOCK_REPORTS.find((r) => r.id === reportId);
         set({ currentReport: mockReport || null, isLoading: false });
@@ -209,9 +206,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
     set({ isGenerating: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         // Simulate generation time
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
@@ -259,9 +254,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
   shareReport: async (reportId, email) => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         const shareUrl = `https://1099pass.com/share/${reportId}?t=${Date.now()}`;
         return shareUrl;
@@ -280,9 +273,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
   revokeReport: async (reportId) => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set((state) => ({
           reports: state.reports.map((r) =>
@@ -307,9 +298,7 @@ export const useReportStore = create<ReportState>((set, get) => ({
 
   downloadReport: async (reportId) => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         return `https://1099pass.com/reports/${reportId}/download.pdf`;
       }

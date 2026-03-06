@@ -82,6 +82,9 @@ const compute = new ComputeStack(app, `Pass1099-Compute-${environment}`, {
   reportsBucket: storage.reportsBucket,
   api: api.api,
   authorizer: api.authorizer,
+  userPoolId: auth.userPool.userPoolId,
+  cognitoBorrowerClientId: auth.borrowerClient.userPoolClientId,
+  cognitoLenderClientId: auth.lenderClient.userPoolClientId,
 });
 
 new MonitoringStack(app, `Pass1099-Monitoring-${environment}`, {

@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';
+import { USE_MOCKS } from '../config';
 
 // Types
 export interface IncomeSource {
@@ -152,9 +153,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         set({ profile, financialProfile, incomeSources });
       }
 
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set({
           profile: MOCK_PROFILE,
@@ -184,9 +183,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set({ isUpdating: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set((state) => ({
           profile: state.profile ? { ...state.profile, ...updates, updatedAt: new Date().toISOString() } : null,
@@ -209,9 +206,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
   loadFinancialProfile: async () => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         set({ financialProfile: MOCK_FINANCIAL_PROFILE });
         return;
@@ -226,9 +221,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 
   loadIncomeSources: async () => {
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         set({ incomeSources: MOCK_INCOME_SOURCES });
         return;
@@ -245,9 +238,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set({ isUpdating: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         // Mock: Add a new connected source
         const newSource: IncomeSource = {
@@ -284,9 +275,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set({ isUpdating: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
         set((state) => ({
           incomeSources: state.incomeSources.map((s) =>
@@ -314,9 +303,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
     set({ isUpdating: true });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 2000));
         set({
           financialProfile: {

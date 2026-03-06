@@ -9,6 +9,7 @@ import { createPlaidService } from '../../services/plaid-service';
 import { incomeNormalizationService } from '../../services/income-normalization-service';
 import { loanScoreService, type DocumentationStatus } from '../../services/loan-score-service';
 import { createReportGeneratorService, type DocumentVerification } from '../../services/report-generator-service';
+import { generateIncomeNarrative } from '../../services/ai-report-narrator';
 import { validateRequest } from '../../middleware/request-validator';
 import { withAuth, type AuthenticatedEvent } from '../../middleware/auth-middleware';
 import { auditLog } from '../../middleware/audit-logger';
@@ -20,7 +21,7 @@ const RequestSchema = z.object({
   targetLoanAmount: z.number().positive().optional(),
 });
 
-async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult> {
+async function generateHandler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult> {
   const { body, user, requestId } = event;
 
   // Validate request
@@ -107,6 +108,14 @@ async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult
       },
     ];
 
+    // AI income narrative (optional; continue without if Bedrock fails)
+    let incomeNarrative: string | undefined;
+    try {
+      incomeNarrative = await generateIncomeNarrative(incomeProfile);
+    } catch (_) {
+      // Report still generated without narrative
+    }
+
     // Generate report
     // TODO: Get actual borrower info from database
     const report = reportService.generateReport(
@@ -117,7 +126,8 @@ async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult
       new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
       incomeProfile,
       loanScore,
-      documentVerification
+      documentVerification,
+      incomeNarrative
     );
 
     // Generate PDF
@@ -164,4 +174,5 @@ async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult
   }
 }
 
-export const main = withAuth(handler);
+export const main = withAuth(generateHandler);
+export const handler = main;

@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../services/api';
+import { USE_MOCKS } from '../config';
 
 // Types
 export interface Message {
@@ -208,9 +209,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         // Simulate API delay
         await new Promise((resolve) => setTimeout(resolve, 500));
         const totalUnread = MOCK_CONVERSATIONS.reduce((sum, c) => sum + c.unreadCount, 0);
@@ -244,9 +243,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     set(isLoadingMore ? { isLoadingMore: true } : { isLoading: true });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         const mockMessages = MOCK_MESSAGES[conversationId] || [];
 
@@ -326,9 +323,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Update the optimistic message to sent status
@@ -422,8 +417,7 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
     });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-      if (!isDev) {
+      if (!USE_MOCKS) {
         await api.post(`/messaging/conversations/${conversationId}/read`);
       }
     } catch (error) {

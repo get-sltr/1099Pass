@@ -1,14 +1,7 @@
-import { createHash, randomBytes } from 'crypto';
-
-/** Generate a secure random share token */
-export function generateShareToken(length = 32): string {
-  return randomBytes(length).toString('base64url');
-}
-
-/** Hash an email for anonymization */
-export function hashEmail(email: string): string {
-  return createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
-}
+/**
+ * Pure encryption/formatting helpers (no Node.js crypto).
+ * Safe to use in React Native. Node-only helpers live in encryption-node.ts.
+ */
 
 /** Mask SSN showing only last 4 digits */
 export function maskSSN(ssn: string): string {
@@ -21,11 +14,6 @@ export function maskSSN(ssn: string): string {
 export function maskAccountNumber(account: string): string {
   if (account.length <= 4) return '****';
   return `${'*'.repeat(account.length - 4)}${account.slice(-4)}`;
-}
-
-/** Generate a random hex string */
-export function generateRandomString(length = 16): string {
-  return randomBytes(length).toString('hex');
 }
 
 /** Constant-time string comparison */

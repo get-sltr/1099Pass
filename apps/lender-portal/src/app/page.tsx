@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 import {
   Building2,
   CheckCircle,
@@ -10,6 +13,8 @@ import {
   Zap,
   Lock,
   BarChart3,
+  Menu,
+  X,
 } from 'lucide-react';
 
 const features = [
@@ -130,16 +135,18 @@ const pricingPlans = [
 ];
 
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <Building2 className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold text-primary">1099Pass</span>
-            <span className="text-sm text-muted-foreground ml-2">for Lenders</span>
-          </div>
+            <span className="text-sm text-muted-foreground ml-2 hidden sm:inline">for Lenders</span>
+          </Link>
+          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-muted-foreground hover:text-foreground transition">
               Features
@@ -150,19 +157,49 @@ export default function LandingPage() {
             <a href="#testimonials" className="text-muted-foreground hover:text-foreground transition">
               Testimonials
             </a>
+            <Link href="/blog" className="text-foreground font-medium hover:text-accent transition">
+              Blog
+            </Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-foreground hover:text-accent transition font-medium">
-              Sign In
-            </Link>
-            <Link
-              href="/register"
-              className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition font-medium"
+            {/* Mobile menu button */}
+            <button
+              type="button"
+              className="md:hidden p-2 text-foreground hover:bg-muted rounded-lg"
+              onClick={() => setMobileMenuOpen((o) => !o)}
+              aria-expanded={mobileMenuOpen}
+              aria-label="Toggle menu"
             >
-              Get Started
-            </Link>
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+            <div className="hidden md:flex items-center gap-4">
+              <Link href="/login" className="text-foreground hover:text-accent transition font-medium">
+                Sign In
+              </Link>
+              <Link
+                href="/register"
+                className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition font-medium"
+              >
+                Get Started
+              </Link>
+            </div>
           </div>
         </div>
+        {/* Mobile menu dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t bg-background px-6 py-4">
+            <div className="flex flex-col gap-2">
+              <a href="#features" className="py-2 text-muted-foreground hover:text-foreground" onClick={() => setMobileMenuOpen(false)}>Features</a>
+              <a href="#pricing" className="py-2 text-muted-foreground hover:text-foreground" onClick={() => setMobileMenuOpen(false)}>Pricing</a>
+              <a href="#testimonials" className="py-2 text-muted-foreground hover:text-foreground" onClick={() => setMobileMenuOpen(false)}>Testimonials</a>
+              <Link href="/blog" className="py-2 font-medium text-foreground hover:text-accent" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
+              <div className="border-t pt-4 mt-2 flex gap-4">
+                <Link href="/login" className="text-foreground font-medium" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
+                <Link href="/register" className="bg-accent text-white px-4 py-2 rounded-lg font-medium" onClick={() => setMobileMenuOpen(false)}>Get Started</Link>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
@@ -439,6 +476,11 @@ export default function LandingPage() {
                   </a>
                 </li>
                 <li>
+                  <Link href="/blog" className="text-muted-foreground hover:text-foreground">
+                    Blog
+                  </Link>
+                </li>
+                <li>
                   <a href="#" className="text-muted-foreground hover:text-foreground">
                     API Documentation
                   </a>
@@ -487,9 +529,14 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-muted-foreground text-sm">
-              © 2024 1099Pass. All rights reserved.
-            </p>
+            <div className="flex flex-col gap-1">
+              <p className="text-muted-foreground text-sm font-medium">
+                Stand by for the biggest update we&apos;re going to make.
+              </p>
+              <p className="text-muted-foreground text-sm">
+                © 2024 1099Pass. All rights reserved.
+              </p>
+            </div>
             <div className="flex gap-4">
               <a href="#" className="text-muted-foreground hover:text-foreground">
                 <span className="sr-only">Twitter</span>

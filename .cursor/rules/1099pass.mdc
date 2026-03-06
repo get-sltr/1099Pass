@@ -1,0 +1,626 @@
+# 1099Pass — Cursor Build Spec
+
+> Data intelligence platform translating gig/1099 income into lender-ready reports.
+
+**Entity:** SLTR Digital LLC | **Founder:** Kevin Minn | **Domain:** 1099pass.com
+
+---
+
+## READ THIS FIRST
+
+1099Pass is **NOT** a tax filing product. It is **NOT** a lender or broker. It is a **data intelligence and facilitation platform** that aggregates, normalizes, and translates gig worker / 1099 contractor income data into clean, standardized, lender-ready reports that dramatically increase the likelihood of loan approval.
+
+**The core product is the Income Verification Report. Everything else exists to support it.**
+
+---
+
+## Architecture (What Already Exists)
+
+```
+Platform:         Two interfaces — Borrower App (mobile) + Lender Portal (web)
+Borrower App:     React Native + Expo SDK 54 (iOS/Android) → apps/borrower-app/
+Lender Portal:    Next.js 14 (App Router) + Tailwind + shadcn/ui → apps/lender-portal/
+Backend:          AWS Lambda (Node.js 20.x) + API Gateway → packages/api/
+Shared:           TypeScript types, Zod schemas, utils → packages/shared/
+Database:         Amazon RDS PostgreSQL 15 (primary) + DynamoDB (sessions/realtime)
+Auth:             AWS Cognito (MFA, OAuth 2.0, RBAC)
+Financial Data:   Plaid (Transactions, Auth, Identity, Balance) — PRODUCTION keys live
+Lender Payments:  Square (web only, lender portal)
+Borrower Payments: StoreKit (iOS) / Google Play Billing (Android) — IAP only; no Square in mobile app
+Encryption:       AWS KMS (all sensitive data at rest), TLS 1.3 in transit
+Storage:          S3 (AES-256 encrypted buckets for documents + reports)
+Infrastructure:   AWS CDK (TypeScript IaC)
+CI/CD:            GitHub → CodeBuild → CDK Deploy
+Monitoring:       CloudWatch, X-Ray, CloudTrail
+Region:           us-east-1
+Account:          335741630084
+```
+
+**Lender Portal is LIVE** at https://1099pass.com via S3 + CloudFront (`E2L2IO6SQNRKCZ`).
+Domain registered on Porkbun, nameservers pointed to Route53 (`Z00757522P29WRQVL66B7`).
+
+---
+
+## Monorepo Structure
+
+```
+~/Desktop/1099Pass/1099Pass/
+├── apps/
+│   ├── borrower-app/              # React Native + Expo (iOS/Android)
+│   │   ├── src/
+│   │   │   ├── app/               # Expo Router (index.tsx, _layout.tsx)
+│   │   │   ├── components/ui/     # Card, Avatar, Button, Modal, Input, Badge, Toast, LoadingSpinner
+│   │   │   ├── hooks/
+│   │   │   ├── navigation/
+│   │   │   ├── services/api.ts    # API client
+│   │   │   ├── store/
+│   │   │   └── theme/             # colors.ts, typography.ts, spacing.ts
+│   │   ├── app.json, eas.json, metro.config.js
+│   │   └── package.json
+│   └── lender-portal/             # Next.js 14 (App Router)
+│       ├── src/app/
+│       │   ├── (auth)/            # login, register
+│       │   ├── (legal)/           # privacy, terms, security, data-use, fcra-disclaimer
+│       │   ├── dashboard/         # home, reports, reports/[id], analytics, criteria, messages, team, settings
+│       │   ├── blog/              # Blog index + [slug] — SEO, gig/1099 mortgage content, sitemap, GA optional
+│       │   ├── page.tsx           # Landing page
+│       │   └── layout.tsx
+│       ├── src/components/, src/lib/, src/store/
+│       ├── next.config.js, tailwind.config.ts
+│       └── package.json
+├── packages/
+│   ├── api/                       # AWS Lambda handlers + services
+│   │   ├── src/
+│   │   │   ├── services/
+│   │   │   │   ├── income-normalization-service.ts   # CORE IP: normalizes gig income
+│   │   │   │   ├── loan-score-service.ts             # 0-100 Loan Readiness Score
+│   │   │   │   ├── report-generator-service.ts       # JSON + PDF report generation
+│   │   │   │   └── plaid-service.ts                  # Plaid API + KMS encryption
+│   │   │   ├── handlers/
+│   │   │   │   ├── auth/register.ts
+│   │   │   │   ├── borrower/get-profile.ts
+│   │   │   │   ├── financial/connect.ts, callback.ts, sync.ts, get-profile.ts
+│   │   │   │   ├── reports/generate.ts, get-report.ts, get-pdf.ts, share.ts, shared-view.ts
+│   │   │   │   ├── scoring/get-score.ts, get-breakdown.ts, get-history.ts
+│   │   │   │   └── dlq-processor.ts
+│   │   │   ├── middleware/        # auth, error-handler, audit-logger, rate-limiter, etc.
+│   │   │   ├── db/
+│   │   │   │   ├── migrations/    # 001-011 SQL migrations
+│   │   │   │   ├── repositories/borrower-repository.ts
+│   │   │   │   └── client.ts
+│   │   │   ├── config/            # environment.ts, aws.ts, database.ts
+│   │   │   ├── utils/             # circuit-breaker.ts, retry.ts
+│   │   │   └── __tests__/         # income-normalization, loan-score, plaid, report-generator
+│   │   └── package.json
+│   └── shared/                    # Shared TypeScript
+│       ├── src/
+│       │   ├── types/             # borrower, lender, report, financial-profile, match, document, message
+│       │   ├── constants/         # gig-platforms (18), subscription-tiers, loan-types
+│       │   └── utils/             # validation.ts, formatting.ts, encryption.ts
+│       └── package.json
+├── infrastructure/                # AWS CDK
+│   ├── bin/1099pass.ts
+│   ├── lib/stacks/
+│   │   ├── networking-stack.ts    # VPC, subnets, security groups
+│   │   ├── database-stack.ts      # RDS PostgreSQL 15 + DynamoDB (sessions, ws-connections, notifications)
+│   │   ├── auth-stack.ts          # Cognito user pools
+│   │   ├── storage-stack.ts       # S3 buckets (documents, reports)
+│   │   ├── security-stack.ts      # KMS keys, IAM, GuardDuty
+│   │   ├── compute-stack.ts       # Lambda functions (Node.js 20.x, 256MB, 30s timeout)
+│   │   ├── api-stack.ts           # API Gateway + WAF (rate limit, OWASP, SQLi, XSS)
+│   │   ├── monitoring-stack.ts    # CloudWatch, X-Ray
+│   │   └── cicd-stack.ts          # GitHub → CodeBuild → CDK Deploy
+│   └── package.json
+├── scripts/                       # deploy.sh, deploy-lender-portal.sh, setup-aws.sh, run-migrations.sh, seed-data.sh, create-test-accounts.sh
+├── docs/
+├── buildspec.yml
+├── package.json                   # npm workspaces root
+└── tsconfig.base.json
+```
+
+---
+
+## Database (PostgreSQL 15 — 11 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `borrowers` | User profiles, KYC status, subscription tier, Cognito sub |
+| `financial_profiles` | Income data, readiness score, income trend, DTI, sources (JSONB) |
+| `documents` | Uploaded tax returns, 1099s, bank statements, P&L |
+| `reports` | Generated income verification reports (type, status, data snapshot, S3 keys, share tokens) |
+| `lenders` | Institution info, plan tier, verification status, Cognito sub |
+| `lending_criteria` | Lender preferences: loan types, income range, gig platforms, geography, DTI/credit thresholds |
+| `matches` | Borrower-lender matches with score, status flow (PENDING→VIEWED→INTERESTED→CONTACTED→DECLINED) |
+| `messages` | Encrypted in-app messaging between borrowers and lenders |
+| `subscriptions` | Billing state for both borrowers (IAP) and lenders (Square) |
+| `notifications` | Push notification records |
+| `audit_logs` | Full audit trail for compliance |
+
+**DynamoDB tables:** sessions, ws-connections (WebSocket), notifications (with TTL)
+
+---
+
+## Core Services (The IP)
+
+### Income Normalization Engine (`income-normalization-service.ts`)
+- Pulls 24 months of Plaid transactions
+- Identifies income by gig platform (18 platforms: Uber, DoorDash, Upwork, Etsy, etc.)
+- Builds monthly history with anomaly detection (>2 std dev)
+- Calculates stability metrics: CoV, weighted average, YoY growth, diversity (HHI), seasonality
+- Produces 4 annualized projections: trailing average, weighted moving, seasonal adjusted, trend adjusted
+- Detects recurring obligations for DTI analysis
+- All monetary values in **cents** (integer arithmetic, no floating point)
+
+### Loan Readiness Score (`loan-score-service.ts`)
+0-100 proprietary score with letter grades (A+ through F):
+
+| Component | Weight | What It Measures |
+|-----------|--------|-----------------|
+| Income Stability | 25% | Month-to-month consistency (CV-based) |
+| Income Trend | 20% | YoY growth direction |
+| Income Diversity | 15% | Number of active income sources |
+| Documentation | 15% | Tax returns, 1099s, bank statements uploaded |
+| Income Level | 15% | Annual income tier + DTI adjustment |
+| Account Age | 10% | Months of verified history |
+
+Loan type thresholds: Mortgage (75/60), Auto (55/40), Personal (50/35), Business (65/50), HELOC (70/55)
+Generates top 5 actionable recommendations with potential score increase + timeframe.
+
+### Report Generator (`report-generator-service.ts`)
+Produces lender-ready PDF + JSON reports with 10 sections:
+1. Header (ID, date, 90-day expiry, verification badge)
+2. Borrower Summary (name, location, account age, verification)
+3. Income Overview (projected annual, confidence intervals, trajectory)
+4. Income Source Breakdown (per-platform, up to 6)
+5. 24-Month History Chart
+6. Stability Metrics
+7. Loan Readiness Score + component breakdown
+8. DTI Estimate
+9. Document Verification Status
+10. Legal Disclaimer (FCRA + facilitation model)
+
+Reports stored in S3 with KMS encryption. Shared via secure tokens (30-day expiry). Presigned PDF URLs (1-hour expiry).
+
+### Plaid Service (`plaid-service.ts`)
+- Products: Transactions (24mo), Auth, Identity, Balance
+- Access tokens encrypted with KMS before DB storage
+- 16 gig platforms auto-identified from merchant names
+- Mock mode for development with realistic data generation
+- Exponential backoff retry (1s base, 3 attempts)
+- **Production keys are LIVE** (migrated 2026-02-23)
+
+---
+
+## Pricing
+
+### Borrowers (IAP only — no Square in mobile app)
+| Tier | Price | Reports/mo | Features |
+|------|-------|-----------|----------|
+| Free | $0 | 1 | Basic score, 2 sources, 1GB storage |
+| Plus | $9.99/mo | 5 | Full breakdown, priority matching, unlimited sources, 10GB |
+| Pro | $24.99/mo | Unlimited | Premium score + recommendations, direct intros, dedicated support |
+
+### Lenders (Square web only)
+| Tier | Price | Reports/mo | API Access |
+|------|-------|-----------|------------|
+| Starter | $99/mo | 50 | No |
+| Professional | $299/mo | 500 | Yes |
+| Enterprise | $999/mo | Unlimited | Yes + SLA |
+
+---
+
+## Design System — Liquid Glass
+
+- **Borrower app:** Light mode, warm/approachable, glass card surfaces
+- **Lender portal:** Dark mode, Bloomberg-inspired, data-dense
+- **Primary Blue:** #0066FF | **Success:** #00C853 | **Warning:** #FFB300 | **Error:** #FF3B30
+- **Glass surface:** `rgba(255,255,255,0.08)` + `backdrop-blur(20px)` + `rgba(255,255,255,0.12)` border
+- **Fonts:** Inter (UI), JetBrains Mono (data) | 8px grid | 44pt min touch targets
+
+---
+
+## AI Integration — AWS Bedrock + Claude
+
+Since the entire backend is already on AWS, Bedrock is the natural fit. No data leaves AWS infrastructure — critical for Plaid tokens, financial data, and PII.
+
+### SDK & Client
+
+```typescript
+// packages/api/src/services/ai-service.ts
+import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
+
+const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+
+type ModelTier = 'fast' | 'smart';
+
+const MODELS: Record<ModelTier, string> = {
+  fast: 'anthropic.claude-haiku-4-5-20251001-v1:0',
+  smart: 'anthropic.claude-sonnet-4-6-20250514-v1:0',
+};
+
+export async function askClaude(
+  prompt: string,
+  options: { tier?: ModelTier; systemPrompt?: string; maxTokens?: number } = {}
+) {
+  const { tier = 'fast', systemPrompt, maxTokens = 2048 } = options;
+  const command = new InvokeModelCommand({
+    modelId: MODELS[tier],
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: Buffer.from(JSON.stringify({
+      anthropic_version: 'bedrock-2023-05-31',
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: prompt }],
+    })),
+  });
+  const response = await bedrock.send(command);
+  return JSON.parse(new TextDecoder().decode(response.body)).content[0].text;
+}
+```
+
+**IAM Policy needed** (add to compute-stack.ts):
+```typescript
+lambdaRole.addToPolicy(new iam.PolicyStatement({
+  actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+  resources: [
+    'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-haiku-*',
+    'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-*',
+  ],
+}));
+```
+
+### AI Feature 1: Enhanced Income Narrative (Sonnet)
+
+Transform raw income normalization data into human-readable, underwriting-friendly language for the report. Instead of just numbers, lenders get context.
+
+```typescript
+// packages/api/src/services/ai-report-narrator.ts
+export async function generateIncomeNarrative(profile: NormalizedIncomeProfile): Promise<string> {
+  return askClaude(
+    `You are a financial data analyst writing for mortgage underwriters.
+Given this normalized income profile for a gig/1099 worker, write a 3-4 paragraph
+income verification narrative that a loan officer would include in an underwriting file.
+
+Data:
+- Projected annual income: $${(profile.annualizedProjection.blendedEstimate / 100).toFixed(2)}
+- Income sources: ${profile.incomeSources.map(s => s.platformName).join(', ')}
+- Stability (CoV): ${profile.stabilityMetrics.coefficientOfVariation.toFixed(3)}
+- Trajectory: ${profile.stabilityMetrics.incomeTrajectory}
+- YoY growth: ${(profile.stabilityMetrics.yearOverYearGrowth * 100).toFixed(1)}%
+- Income diversity score: ${profile.stabilityMetrics.diversityScore.toFixed(2)}
+- DTI ratio: ${profile.debtToIncomeAnalysis?.dtiRatio?.toFixed(3) || 'N/A'}
+- Months of verified history: ${profile.analysisWindow.monthsAnalyzed}
+
+Tone: Professional, factual, confident where data supports it, appropriately cautious where it doesn't.
+Do NOT make claims about creditworthiness. State facts about income patterns only.`,
+    { tier: 'smart', maxTokens: 1024 }
+  );
+}
+```
+
+**Where it plugs in:** `report-generator-service.ts` → add narrative section to PDF between Income Overview and Source Breakdown.
+
+### AI Feature 2: Smart Transaction Categorization (Haiku)
+
+Plaid sometimes miscategorizes gig income. AI catches what Plaid misses — especially for lesser-known platforms or direct deposits.
+
+```typescript
+// packages/api/src/services/ai-transaction-classifier.ts
+export async function classifyAmbiguousTransactions(
+  transactions: { name: string; merchantName: string | null; amount: number; category: string[] }[]
+): Promise<{ index: number; incomeSourceType: IncomeSourceType; platformName: string; confidence: number }[]> {
+  return JSON.parse(await askClaude(
+    `Classify these bank transactions as income sources for a gig/1099 worker.
+For each transaction, determine:
+1. Whether it's gig/contractor income (not personal transfers, refunds, or regular employment)
+2. The platform or source name
+3. Income type: GIG_PLATFORM, CONTRACTOR_1099, SELF_EMPLOYMENT, INVESTMENT, RENTAL, OTHER
+4. Confidence (0-1)
+
+Transactions:
+${JSON.stringify(transactions.map((t, i) => ({ index: i, name: t.name, merchant: t.merchantName, amount: t.amount / 100, categories: t.category })))}
+
+Return JSON array of ONLY the ones that are gig/contractor income:
+[{ "index": 0, "incomeSourceType": "GIG_PLATFORM", "platformName": "Uber", "confidence": 0.95 }]`,
+    { tier: 'fast' }
+  ));
+}
+```
+
+**Where it plugs in:** `income-normalization-service.ts` → `identifyIncomeSources()` — run ambiguous transactions through AI after the initial keyword-based matching.
+
+### AI Feature 3: Borrower Coach / Score Advisor (Sonnet)
+
+In-app chat in the borrower app. Helps users understand their score and gives personalized advice to improve it before applying for loans.
+
+```typescript
+// packages/api/src/services/ai-borrower-coach.ts
+const COACH_SYSTEM_PROMPT = `You are the 1099Pass Income Coach, an AI assistant helping gig workers
+and 1099 contractors improve their Loan Readiness Score and prepare for loan applications.
+
+You have access to the user's:
+- Loan Readiness Score and component breakdown
+- Income sources and trends
+- Document verification status
+- Score improvement recommendations
+
+Your role:
+- Explain their score in plain language (no jargon)
+- Give specific, actionable advice to improve their score
+- Help them understand what lenders look for in gig income
+- Encourage them to connect more accounts, upload documents, diversify income
+- Be supportive and empowering — many of these users have been rejected by traditional lenders
+
+Rules:
+- NEVER give specific loan advice ("you'll get approved for X")
+- NEVER reference specific lenders by name
+- NEVER discuss credit scores (we don't verify those)
+- NEVER ask for or reference SSN, bank passwords, or sensitive credentials
+- Always clarify that 1099Pass is NOT a lender
+- Keep responses concise (2-3 paragraphs max)`;
+
+export async function chatWithCoach(
+  message: string,
+  history: { role: 'user' | 'assistant'; content: string }[],
+  context: { score: number; grade: string; components: ScoreComponent[]; recommendations: Recommendation[] }
+) {
+  // Inject current score context into system prompt
+  const contextPrompt = `${COACH_SYSTEM_PROMPT}
+
+Current user context:
+- Loan Readiness Score: ${context.score}/100 (${context.grade})
+- Components: ${context.components.map(c => `${c.name}: ${c.rawScore}/100`).join(', ')}
+- Top recommendations: ${context.recommendations.slice(0, 3).map(r => r.action).join('; ')}`;
+
+  // Uses streaming for chat UX — implement via Lambda response streaming
+  // or API Gateway WebSocket
+}
+```
+
+**New Lambda handler needed:** `packages/api/src/handlers/ai/chat.ts`
+**New API route:** `POST /ai/chat` (Cognito-authorized, borrower role only)
+**Borrower app:** New chat screen in navigation
+
+### AI Feature 4: Document Intelligence (Haiku Vision)
+
+Users upload tax returns, 1099 forms, bank statements to their Document Vault. AI extracts key data to auto-populate their financial profile and boost their Documentation score component.
+
+```typescript
+// packages/api/src/services/ai-document-analyzer.ts
+export async function analyzeUploadedDocument(
+  imageBase64: string,
+  documentType: 'TAX_RETURN' | '1099_FORM' | 'BANK_STATEMENT' | 'PROFIT_LOSS'
+) {
+  const response = await askClaude(
+    `Analyze this ${documentType.replace('_', ' ')} document. Extract:
+
+For 1099_FORM:
+- Payer name, Payer TIN (REDACT — return "***"), Recipient name
+- Box amounts (nonemployee compensation, rents, royalties, etc.)
+- Tax year
+
+For TAX_RETURN:
+- Filing status, tax year
+- Total income (line 9 on 1040), AGI (line 11)
+- Schedule C net profit/loss if present
+- Schedule SE self-employment tax if present
+
+For BANK_STATEMENT:
+- Institution name, statement period
+- Total deposits, total withdrawals
+- Ending balance
+- Identified income deposits (list top recurring ones)
+
+For PROFIT_LOSS:
+- Business name, period
+- Total revenue, total expenses, net income
+
+Return JSON. For any TIN/SSN/account numbers, return "REDACTED".
+If the image is unclear or not the expected document type, return { "error": "description" }.`,
+    { tier: 'fast', maxTokens: 2048 }
+  );
+
+  // Extracted data goes into financial_profiles.income_sources or documents table
+  // User must confirm extracted amounts before they affect their score
+}
+```
+
+**Where it plugs in:** `packages/api/src/handlers/documents/` — after S3 upload, trigger analysis. Store results in documents table. User confirms before data flows into financial profile.
+
+### AI Feature 5: Lender Smart Matching (Sonnet)
+
+Currently matches are based on rigid criteria (min income, geography, loan type). AI adds nuance — understanding which lenders are actually likely to approve a specific borrower's profile.
+
+```typescript
+// packages/api/src/services/ai-matching-service.ts
+export async function rankLenderMatches(
+  borrowerProfile: NormalizedIncomeProfile,
+  loanScore: LoanReadinessScore,
+  matchingLenders: { lender: Lender; criteria: LendingCriteria; basicMatchScore: number }[]
+): Promise<{ lenderId: string; aiScore: number; reasoning: string }[]> {
+  return JSON.parse(await askClaude(
+    `You are analyzing borrower-lender fit for a gig worker income verification platform.
+
+Borrower Profile:
+- Annual income: $${borrowerProfile.annualizedProjection.blendedEstimate / 100}
+- Sources: ${borrowerProfile.incomeSources.map(s => `${s.platformName} ($${s.annualTotal / 100}/yr)`).join(', ')}
+- Stability: ${borrowerProfile.stabilityMetrics.incomeTrajectory}
+- Loan Readiness Score: ${loanScore.overallScore} (${loanScore.letterGrade})
+- Qualified loan types: ${loanScore.qualifiedLoanTypes.join(', ')}
+
+Lenders to rank (with their criteria):
+${JSON.stringify(matchingLenders.map(m => ({
+  id: m.lender.id,
+  name: m.lender.institution_name,
+  type: m.lender.lender_type,
+  loanTypes: m.criteria.loan_types,
+  minIncome: m.criteria.min_annual_income,
+  platforms: m.criteria.accepted_gig_platforms,
+  basicScore: m.basicMatchScore,
+})))}
+
+For each lender, score 0-100 on likelihood of good fit and give a one-sentence reasoning.
+Consider: income type alignment, lender specialization, borrower strength areas.
+Return JSON: [{ "lenderId": "...", "aiScore": 85, "reasoning": "..." }]`,
+    { tier: 'smart', maxTokens: 2048 }
+  ));
+}
+```
+
+**Where it plugs in:** After basic criteria matching, AI re-ranks results. Available for Professional and Enterprise lender tiers.
+
+### New Files to Create
+
+```
+packages/api/src/services/
+├── ai-service.ts                  # Bedrock client + model config
+├── ai-report-narrator.ts          # Income narrative for reports
+├── ai-transaction-classifier.ts   # Smart transaction categorization
+├── ai-borrower-coach.ts           # Chat assistant for borrowers
+├── ai-document-analyzer.ts        # Document vault OCR + extraction
+└── ai-matching-service.ts         # Lender smart matching
+
+packages/api/src/handlers/ai/
+├── chat.ts                        # POST /ai/chat (borrower coach)
+└── analyze-document.ts            # POST /ai/analyze-document
+
+apps/borrower-app/src/
+├── screens/Coach.tsx              # Chat UI for borrower coach
+└── services/ai.ts                 # API client for AI endpoints
+```
+
+### CDK Changes Needed
+
+```typescript
+// infrastructure/lib/stacks/compute-stack.ts — add to Lambda environment + IAM
+
+// 1. Add Bedrock permissions to Lambda execution role
+lambdaRole.addToPolicy(new iam.PolicyStatement({
+  actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+  resources: [
+    'arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-*',
+  ],
+}));
+
+// 2. New Lambda functions
+// ChatFn: POST /ai/chat — 512MB memory, 60s timeout (streaming)
+// AnalyzeDocumentFn: POST /ai/analyze-document — 512MB memory, 60s timeout (vision)
+
+// 3. API Gateway routes
+// /ai/chat (POST) — Cognito auth, borrower role
+// /ai/analyze-document (POST) — Cognito auth, borrower role
+```
+
+### AI Cost Estimate
+
+| Feature | Model | ~Cost per call | Frequency |
+|---------|-------|---------------|-----------|
+| Income narrative | Sonnet | ~$0.01 | Per report generation |
+| Transaction classification | Haiku | ~$0.002 | Per Plaid sync (batch) |
+| Borrower coach chat | Sonnet | ~$0.005 | Per message |
+| Document analysis | Haiku (vision) | ~$0.005 | Per document upload |
+| Lender smart matching | Sonnet | ~$0.01 | Per match refresh |
+
+**At 1000 borrowers, moderate usage: ~$20-50/month.** Negligible vs Plaid costs.
+
+### AI Safety Rules
+
+- **NEVER send Plaid access tokens** to Bedrock — decrypt only for Plaid API calls
+- **NEVER send full SSN/TIN/account numbers** — redact before any AI prompt
+- **NEVER let AI make lending decisions** — it ranks and explains, humans decide
+- **AI chat responses include disclaimer:** "I'm an AI assistant, not a financial advisor"
+- **Log all AI calls in audit_logs** (prompt hash + model used, NOT prompt content if it contains financial data)
+- **Rate limit chat:** 30 messages/day per borrower
+- **Document analysis requires user confirmation** before data enters financial profile
+
+---
+
+## Known Issues (Pre-existing)
+
+- `packages/shared/src/utils/encryption.ts` imports Node `crypto` — crashes React Native. Needs `expo-crypto` fix.
+- Lambda functions: use NodejsFunction (esbuild) for packaging; see compute-stack and PLAID_PRODUCTION_MIGRATION.md for past module errors (resolved).
+- API handlers, repositories, hooks need verification/completion
+- iCloud Drive path causes slow builds — consider local SSD
+- Lambda Node.js 20.x EOL April 30, 2026 — upgrade to 22 needed
+- Dynamic routes removed from lender portal for static export — add back when API is wired
+
+---
+
+## What Needs to Launch
+
+### Phase 1: Wire It Up
+- [ ] Fix Lambda packaging (module not found errors)
+- [ ] Wire borrower app → API → Plaid Link flow end-to-end
+- [ ] Wire report generation → S3 → PDF download flow
+- [ ] Wire lender portal → API → report viewing
+- [ ] Verify all 8 repositories are implemented
+- [ ] Fix crypto import crash in React Native (expo-crypto)
+- [ ] Square integration for lender subscriptions
+- [ ] IAP integration for borrower subscriptions
+
+### Phase 2: AI Layer
+- [ ] Add `ai-service.ts` Bedrock client
+- [ ] Add Bedrock IAM permissions to compute-stack
+- [ ] Implement AI income narrative in report generator
+- [ ] Implement AI transaction classifier in income normalization
+- [ ] Build borrower coach chat (Lambda + borrower app screen)
+- [ ] Build document analyzer (Lambda + S3 trigger)
+- [ ] Wire AI smart matching for lender portal
+
+### Phase 3: Polish & Launch
+- [ ] Apply Liquid Glass design system throughout both apps
+- [ ] End-to-end testing (Plaid Link → income processing → report → lender viewing)
+- [ ] Landing page polish at 1099pass.com
+- [ ] Legal pages finalized (terms, privacy, FCRA disclaimer)
+- [ ] Upgrade Lambda to Node.js 22
+- [ ] Security audit (KMS, RLS, WAF, audit logs)
+- [ ] App Store / Google Play submission
+
+---
+
+## Dev Commands
+
+```bash
+# Lender Portal (browser)
+cd ~/Desktop/1099Pass/1099Pass/apps/lender-portal && npm run dev
+# → http://localhost:3000
+
+# Borrower App (phone/simulator)
+cd ~/Desktop/1099Pass/1099Pass/apps/borrower-app && npx expo start
+# Press 'i' for iOS simulator
+
+# Type Check
+cd ~/Desktop/1099Pass/1099Pass && npx tsc --noEmit
+
+# Deploy
+cd ~/Desktop/1099Pass/1099Pass && ./scripts/deploy.sh dev
+
+# Redeploy Lender Portal (live site — S3 + CloudFront)
+# Must use static export; one-command script:
+cd ~/Desktop/1099Pass/1099Pass && ./scripts/deploy-lender-portal.sh
+# Or manually: BUILD_FOR_S3=true npm run build --workspace=@1099pass/lender-portal
+# then: aws s3 sync apps/lender-portal/out s3://pass1099-prod-lender-portal --delete
+# then: aws cloudfront create-invalidation --distribution-id E2L2IO6SQNRKCZ --paths "/*"
+# See docs/DEPLOY-LENDER-PORTAL.md
+```
+
+---
+
+## Non-Negotiable Rules
+
+- TypeScript strict mode everywhere
+- All SQL uses parameterized queries
+- All Plaid tokens encrypted with KMS before storage
+- PII never in logs, error messages, or analytics
+- NEVER add Square to the borrower React Native app (IAP only)
+- NEVER send raw Plaid data to lenders (only processed reports)
+- NEVER store bank login credentials
+- Run `npx tsc --noEmit` after every change
+- All monetary values in **cents** (integer arithmetic)
+- Row-level security on all PostgreSQL tables
+- Zod validation on every input boundary
+
+---
+
+*1099Pass is a data intelligence platform. The report is the product. The report is the IP. Everything else supports it.*

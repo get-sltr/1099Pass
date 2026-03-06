@@ -51,8 +51,9 @@ export default function LegalLayout({
               Security
             </Link>
           </nav>
-          <p className="mt-6 text-center text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} 1099Pass, Inc. All rights reserved.
+          <p className="mt-6 text-center text-sm text-muted-foreground font-medium">Stand by for the biggest update we&apos;re going to make.</p>
+          <p className="mt-2 text-center text-sm text-muted-foreground">
+            © 2024 1099Pass. All rights reserved.
           </p>
         </div>
       </footer>

@@ -71,6 +71,9 @@ export interface LenderReport {
   // Income Overview
   incomeOverview: IncomeOverview;
 
+  /** AI-generated income verification narrative (optional) */
+  incomeNarrative?: string;
+
   // Income Sources Table
   incomeSources: IncomeSourceSummary[];
 
@@ -160,7 +163,8 @@ export class ReportGeneratorService {
     memberSince: Date,
     incomeProfile: NormalizedIncomeProfile,
     loanScore: LoanReadinessScore,
-    documentStatus: DocumentVerification[]
+    documentStatus: DocumentVerification[],
+    incomeNarrative?: string
   ): LenderReport {
     const reportId = uuidv4();
     const now = new Date();
@@ -225,6 +229,8 @@ export class ReportGeneratorService {
         trajectory: incomeProfile.trajectory,
         trajectoryDescription: this.getTrajectoryDescription(incomeProfile.trajectory),
       },
+
+      ...(incomeNarrative != null && incomeNarrative !== '' ? { incomeNarrative } : {}),
 
       incomeSources,
       monthlyHistory,
@@ -315,6 +321,10 @@ export class ReportGeneratorService {
 
       // Income Overview
       this.renderIncomeOverview(doc, report);
+
+      if (report.incomeNarrative) {
+        this.renderIncomeNarrative(doc, report);
+      }
 
       // Income Sources Table
       this.renderIncomeSources(doc, report);
@@ -535,6 +545,22 @@ export class ReportGeneratorService {
       .text(report.incomeOverview.trajectoryDescription, 300, y + 76, { width: 220 });
 
     doc.moveDown(3);
+  }
+
+  private renderIncomeNarrative(doc: PDFKit.PDFDocument, report: LenderReport): void {
+    if (!report.incomeNarrative) return;
+    const y = (doc as { y?: number }).y ?? 340;
+    doc
+      .fontSize(12)
+      .font('Helvetica-Bold')
+      .fillColor('#1E3A5F')
+      .text('Income Verification Narrative', 50, y + 20);
+    doc
+      .fontSize(10)
+      .font('Helvetica')
+      .fillColor('#333333')
+      .text(report.incomeNarrative, 50, y + 45, { width: 500, align: 'left' });
+    doc.moveDown(2);
   }
 
   private renderIncomeSources(doc: PDFKit.PDFDocument, report: LenderReport): void {

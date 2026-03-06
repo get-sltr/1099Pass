@@ -16,7 +16,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { colors, borderRadius, spacing, layout, textStyles as themeTextStyles, shadows } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
+import { borderRadius, spacing, layout, textStyles as themeTextStyles, shadows } from '../../theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'mint';
 export type ButtonSize = 'small' | 'medium' | 'large';
@@ -56,6 +57,7 @@ export function Button({
   accessibilityLabel,
   hapticFeedback = true,
 }: ButtonProps) {
+  const { colors } = useTheme();
   const handlePress = () => {
     if (disabled || loading) return;
     if (hapticFeedback) {
@@ -66,7 +68,11 @@ export function Button({
 
   const buttonStyles = [
     styles.base,
-    styles[variant],
+    variant === 'primary' && { backgroundColor: colors.primary, ...shadows.sm },
+    variant === 'secondary' && { backgroundColor: 'transparent', borderWidth: 2, borderColor: colors.primary },
+    variant === 'ghost' && { backgroundColor: 'transparent' },
+    variant === 'danger' && { backgroundColor: colors.error, ...shadows.sm },
+    variant === 'mint' && { backgroundColor: colors.mint, ...shadows.sm },
     styles[size],
     fullWidth && styles.fullWidth,
     (disabled || loading) && styles.disabled,
@@ -75,7 +81,12 @@ export function Button({
 
   const textStylesArray = [
     styles.text,
-    styles[`${variant}Text` as keyof typeof styles],
+    { color: colors.textPrimary },
+    variant === 'primary' && { color: colors.textInverse },
+    variant === 'secondary' && { color: colors.primary },
+    variant === 'ghost' && { color: colors.primary },
+    variant === 'danger' && { color: colors.textInverse },
+    variant === 'mint' && { color: colors.primary },
     styles[`${size}Text` as keyof typeof styles],
     (disabled || loading) && styles.disabledText,
     textStyle,
@@ -93,13 +104,13 @@ export function Button({
 
   // Determine what to render on left/right
   const renderLeftIcon = leftIcon ? (
-    <Ionicons name={leftIcon as any} size={iconSize} color={iconColor} style={styles.iconLeft} />
+    <Ionicons name={leftIcon as any} size={iconSize} color={iconColor} style={styles.iconLeft as StyleProp<TextStyle>} />
   ) : icon && iconPosition === 'left' ? (
     <View style={styles.iconLeft}>{icon}</View>
   ) : null;
 
   const renderRightIcon = rightIcon ? (
-    <Ionicons name={rightIcon as any} size={iconSize} color={iconColor} style={styles.iconRight} />
+    <Ionicons name={rightIcon as any} size={iconSize} color={iconColor} style={styles.iconRight as StyleProp<TextStyle>} />
   ) : icon && iconPosition === 'right' ? (
     <View style={styles.iconRight}>{icon}</View>
   ) : null;
@@ -119,7 +130,7 @@ export function Button({
       ) : (
         <View style={styles.content}>
           {renderLeftIcon}
-          <Text style={textStylesArray}>{title}</Text>
+          <Text style={textStylesArray as StyleProp<TextStyle>}>{title}</Text>
           {renderRightIcon}
         </View>
       )}
@@ -129,7 +140,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: borderRadius.full, // Pill shape
+    borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -137,29 +148,6 @@ const styles = StyleSheet.create({
     minHeight: layout.minTouchTarget,
   },
 
-  // Variants
-  primary: {
-    backgroundColor: colors.primary,
-    ...shadows.sm,
-  },
-  secondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
-  ghost: {
-    backgroundColor: 'transparent',
-  },
-  danger: {
-    backgroundColor: colors.error,
-    ...shadows.sm,
-  },
-  mint: {
-    backgroundColor: colors.mint,
-    ...shadows.sm,
-  },
-
-  // Sizes
   small: {
     height: layout.buttonHeightSmall,
     paddingHorizontal: spacing[4],
@@ -178,40 +166,19 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  // Disabled state
   disabled: {
     opacity: 0.5,
   },
 
-  // Content container
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Text styles
   text: {
     ...themeTextStyles.button,
-    color: colors.textPrimary,
   },
-  primaryText: {
-    color: colors.textInverse,
-  },
-  secondaryText: {
-    color: colors.primary,
-  },
-  ghostText: {
-    color: colors.primary,
-  },
-  dangerText: {
-    color: colors.textInverse,
-  },
-  mintText: {
-    color: colors.primary,
-  },
-
-  // Size-specific text
   smallText: {
     ...themeTextStyles.buttonSmall,
   },
@@ -226,7 +193,6 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
 
-  // Icon spacing
   iconLeft: {
     marginRight: spacing[2],
   } as ViewStyle,

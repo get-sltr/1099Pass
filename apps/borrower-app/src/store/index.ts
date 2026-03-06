@@ -24,3 +24,5 @@ export type { AppNotification, NotificationType, NotificationPreferences } from 
 
 export { useSubscriptionStore } from './subscription-store';
 export type { Subscription, SubscriptionTier, SubscriptionPlan, UsageStats } from './subscription-store';
+
+export { useThemeStore } from './theme-store';

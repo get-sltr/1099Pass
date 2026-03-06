@@ -13,6 +13,7 @@ import {
   Settings,
   ChevronLeft,
   LogOut,
+  Percent,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore, useAuthStore } from '@/store';
@@ -25,6 +26,7 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
+  { name: 'Rates', href: '/dashboard/rates', icon: Percent },
   { name: 'Criteria', href: '/dashboard/criteria', icon: Settings2 },
   { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },

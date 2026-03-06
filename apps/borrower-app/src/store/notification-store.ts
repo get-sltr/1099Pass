@@ -8,6 +8,7 @@ import * as SecureStore from 'expo-secure-store';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { api } from '../services/api';
+import { USE_MOCKS } from '../config';
 
 // Types
 export type NotificationType =
@@ -158,9 +159,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         set({ notifications, unreadCount });
       }
 
-      const isDev = process.env.NODE_ENV === 'development';
-
-      if (isDev) {
+      if (USE_MOCKS) {
         await new Promise((resolve) => setTimeout(resolve, 300));
         const unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
         set({
@@ -196,8 +195,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }));
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-      if (!isDev) {
+      if (!USE_MOCKS) {
         await api.post(`/notifications/${notificationId}/read`);
       }
 
@@ -216,8 +214,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }));
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-      if (!isDev) {
+      if (!USE_MOCKS) {
         await api.post('/notifications/read-all');
       }
 
@@ -240,8 +237,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     }));
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-      if (!isDev) {
+      if (!USE_MOCKS) {
         await api.delete(`/notifications/${notificationId}`);
       }
 
@@ -257,8 +253,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     set({ notifications: [], unreadCount: 0 });
 
     try {
-      const isDev = process.env.NODE_ENV === 'development';
-      if (!isDev) {
+      if (!USE_MOCKS) {
         await api.delete('/notifications/all');
       }
 
@@ -296,8 +291,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       await SecureStore.setItemAsync(PUSH_TOKEN_KEY, pushToken);
 
       // Register with backend
-      const isDev = process.env.NODE_ENV === 'development';
-      if (!isDev) {
+      if (!USE_MOCKS) {
         await api.post('/notifications/register-device', {
           token: pushToken,
           platform: Platform.OS,
@@ -310,6 +304,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           shouldShowAlert: true,
           shouldPlaySound: true,
           shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
         }),
       });
     } catch (error) {
@@ -324,8 +320,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     try {
       await SecureStore.setItemAsync(PREFERENCES_KEY, JSON.stringify(newPreferences));
 
-      const isDev = process.env.NODE_ENV === 'development';
-      if (!isDev) {
+      if (!USE_MOCKS) {
         await api.put('/notifications/preferences', newPreferences);
       }
     } catch (error) {

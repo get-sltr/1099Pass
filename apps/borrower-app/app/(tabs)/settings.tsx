@@ -12,12 +12,15 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  Linking,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Avatar, Badge, Modal, Button, useToast, ConfirmModal } from '../../src/components/ui';
 import { useAuthStore } from '../../src/store';
+import { useTheme } from '../../src/contexts/ThemeContext';
+import { themeNames, type ThemeMode } from '../../src/theme/dualThemes';
 import { useSubscriptionStore } from '../../src/store/subscription-store';
 import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
 
@@ -44,6 +47,7 @@ interface SettingToggle {
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
+  const { theme, setTheme } = useTheme();
   const { currentSubscription, loadSubscription } = useSubscriptionStore();
   const { showToast } = useToast();
 
@@ -113,6 +117,20 @@ export default function SettingsScreen() {
       description: 'Receive weekly income summaries',
       value: emailNotifications,
       onToggle: setEmailNotifications,
+    },
+  ];
+
+  const appearanceSettings: SettingItem[] = [
+    {
+      id: 'appearance',
+      icon: 'moon-outline',
+      label: 'Appearance',
+      value: theme === 'day' ? themeNames.day : themeNames.night,
+      onPress: () => {
+        const next: ThemeMode = theme === 'day' ? 'night' : 'day';
+        setTheme(next);
+      },
+      showArrow: true,
     },
   ];
 
@@ -194,18 +212,21 @@ export default function SettingsScreen() {
       id: 'terms',
       icon: 'document-text-outline',
       label: 'Terms of Service',
+      onPress: () => Linking.openURL('https://1099pass.com/terms'),
       showArrow: true,
     },
     {
       id: 'privacy',
       icon: 'shield-outline',
       label: 'Privacy Policy',
+      onPress: () => Linking.openURL('https://1099pass.com/privacy'),
       showArrow: true,
     },
     {
       id: 'data_request',
       icon: 'download-outline',
       label: 'Request My Data',
+      onPress: () => Linking.openURL('https://1099pass.com/privacy'),
       showArrow: true,
     },
   ];
@@ -404,6 +425,19 @@ export default function SettingsScreen() {
               <View key={toggle.id}>
                 {renderSettingToggle(toggle)}
                 {index < notificationToggles.length - 1 && <View style={styles.divider} />}
+              </View>
+            ))}
+          </Card>
+        </View>
+
+        {/* Appearance */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Appearance</Text>
+          <Card variant="outlined" style={styles.settingsCard}>
+            {appearanceSettings.map((item, index) => (
+              <View key={item.id}>
+                {renderSettingItem(item)}
+                {index < appearanceSettings.length - 1 && <View style={styles.divider} />}
               </View>
             ))}
           </Card>

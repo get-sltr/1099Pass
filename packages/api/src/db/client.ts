@@ -31,7 +31,8 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
 ): Promise<QueryResult<T>> {
   const p = await getPool();
   if (config.isDev()) {
-    console.log('SQL:', text, params);
+    // Log only in dev; never log query content in production (may contain PII)
+    console.log('SQL:', text.substring(0, 80) + (text.length > 80 ? '...' : ''));
   }
   return p.query<T>(text, params);
 }

@@ -11,27 +11,31 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { ToastProvider } from '../src/components/ui';
+import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
+import { nightTheme } from '../src/theme/dualThemes';
 import ErrorBoundary from '../src/components/ErrorBoundary';
 import { OfflineBanner } from '../src/components/OfflineBanner';
-import { colors } from '../src/theme';
 
 // Keep splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
+  const { colors: themeColors } = useTheme();
+  const bg = themeColors.background;
+
   useEffect(() => {
     // Hide splash screen once fonts are loaded
     SplashScreen.hideAsync();
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: bg }]}>
       <OfflineBanner showWhenOnline />
-      <StatusBar style="dark" backgroundColor={colors.background} />
+      <StatusBar style={themeColors.background === nightTheme.background ? 'light' : 'dark'} backgroundColor={bg} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
+          contentStyle: { backgroundColor: bg },
           animation: 'slide_from_right',
         }}
       >
@@ -49,7 +53,9 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <ToastProvider>
-          <AppContent />
+          <ThemeProvider>
+            <AppContent />
+          </ThemeProvider>
         </ToastProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
@@ -59,6 +65,5 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 });

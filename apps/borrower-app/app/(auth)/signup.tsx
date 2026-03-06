@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Image,
+  Linking,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -155,6 +157,15 @@ export default function SignUpScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
 
+        {/* Logo */}
+        <View style={styles.logoWrapper}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+            accessibilityLabel="1099Pass logo"
+          />
+        </View>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Create Account</Text>
@@ -288,8 +299,13 @@ export default function SignUpScreen() {
             </View>
             <Text style={styles.termsText}>
               I agree to the{' '}
-              <Text style={styles.termsLink}>Terms of Service</Text> and{' '}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
+              <Text style={styles.termsLink} onPress={() => Linking.openURL('https://1099pass.com/terms')}>
+                Terms of Service
+              </Text>
+              {' '}and{' '}
+              <Text style={styles.termsLink} onPress={() => Linking.openURL('https://1099pass.com/privacy')}>
+                Privacy Policy
+              </Text>
             </Text>
           </TouchableOpacity>
           {errors.acceptTerms && (
@@ -344,6 +360,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing[2],
   },
 
+  logoWrapper: {
+    width: 180,
+    height: 72,
+    backgroundColor: '#000',
+    borderRadius: 8,
+    overflow: 'hidden',
+    alignSelf: 'center',
+    marginBottom: spacing[6],
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+  },
   header: {
     marginBottom: spacing[6],
   },

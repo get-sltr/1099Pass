@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card } from '../../src/components/ui';
 import { useAuthStore } from '../../src/store';
+import { USE_MOCKS } from '../../src/config';
 import { colors, spacing, textStyles, borderRadius, getScoreColor, getLetterGrade } from '../../src/theme';
 
 // Score gauge component
@@ -123,8 +124,8 @@ export default function ProfileCompleteScreen() {
   const [showContent, setShowContent] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Mock initial score based on connected accounts
-  const initialScore = 620;
+  // In mock/demo mode don't show a fake high score; show 0 and explain
+  const initialScore = USE_MOCKS ? 0 : 620;
 
   useEffect(() => {
     // Delay content fade-in after score animation
@@ -173,13 +174,15 @@ export default function ProfileCompleteScreen() {
         </View>
         <Text style={styles.title}>You're All Set!</Text>
         <Text style={styles.subtitle}>
-          Your income profile is ready. Here's your initial loan readiness score.
+          {USE_MOCKS
+            ? 'Connect your income sources and add documents to build your loan readiness score.'
+            : 'Your income profile is ready. Here\'s your initial loan readiness score.'}
         </Text>
       </View>
 
       {/* Score gauge */}
       <View style={styles.scoreSection}>
-        <ScoreGauge score={initialScore} />
+        <ScoreGauge score={initialScore} animated={!USE_MOCKS} />
       </View>
 
       {/* Score breakdown */}

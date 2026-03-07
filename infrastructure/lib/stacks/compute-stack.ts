@@ -126,6 +126,81 @@ export class ComputeStack extends cdk.Stack {
     });
     rateRefreshRule.addTarget(new targets.LambdaFunction(refreshRatesFn));
 
+    // -----------------------------------------------------------------------
+    // Square Lender Billing — secrets, Lambdas, API routes
+    // -----------------------------------------------------------------------
+    const squareSecret = new secretsmanager.Secret(this, 'SquareAccessTokenSecret', {
+      secretName: `pass1099-${props.environment}-square-access-token`,
+      description: 'Square access token for lender subscription billing. Set the value in AWS Console.',
+      encryptionKey: props.encryptionKey,
+    });
+
+    const subscriptionsResource = props.api.root.addResource('subscriptions');
+
+    const squareEnv: Record<string, string> = {
+      ...commonEnv,
+      SQUARE_SECRET_ARN: squareSecret.secretArn,
+      SQUARE_APP_ID: process.env.SQUARE_APP_ID || '',
+      SQUARE_LOCATION_ID: process.env.SQUARE_LOCATION_ID || '',
+    };
+
+    const subscribeFn = new lambdaNodejs.NodejsFunction(this, 'SubscribeFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-subscriptions-subscribe`,
+      entry: path.join(apiHandlersRoot, 'subscriptions', 'subscribe.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.seconds(30),
+      environment: squareEnv,
+    });
+    squareSecret.grantRead(subscribeFn);
+    subscriptionsResource.addResource('subscribe').addMethod(
+      'POST', new apigateway.LambdaIntegration(subscribeFn), methodOptions,
+    );
+    this.lambdaFunctions.push(subscribeFn);
+
+    const subStatusFn = new lambdaNodejs.NodejsFunction(this, 'SubStatusFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-subscriptions-status`,
+      entry: path.join(apiHandlersRoot, 'subscriptions', 'status.ts'),
+      handler: 'handler',
+      environment: commonEnv,
+    });
+    subscriptionsResource.addResource('current').addMethod(
+      'GET', new apigateway.LambdaIntegration(subStatusFn), methodOptions,
+    );
+    this.lambdaFunctions.push(subStatusFn);
+
+    const cancelSubFn = new lambdaNodejs.NodejsFunction(this, 'CancelSubFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-subscriptions-cancel`,
+      entry: path.join(apiHandlersRoot, 'subscriptions', 'cancel.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.seconds(15),
+      environment: squareEnv,
+    });
+    squareSecret.grantRead(cancelSubFn);
+    subscriptionsResource.addResource('cancel').addMethod(
+      'POST', new apigateway.LambdaIntegration(cancelSubFn), methodOptions,
+    );
+    this.lambdaFunctions.push(cancelSubFn);
+
+    // Webhook is public (no Cognito auth); Square verifies via HMAC signature
+    const webhookFn = new lambdaNodejs.NodejsFunction(this, 'SubWebhookFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-subscriptions-webhook`,
+      entry: path.join(apiHandlersRoot, 'subscriptions', 'webhook.ts'),
+      handler: 'handler',
+      environment: {
+        ...commonEnv,
+        SQUARE_WEBHOOK_SIGNATURE_KEY: process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || '',
+        SQUARE_WEBHOOK_URL: process.env.SQUARE_WEBHOOK_URL || '',
+      },
+    });
+    subscriptionsResource.addResource('webhook').addMethod(
+      'POST', new apigateway.LambdaIntegration(webhookFn),
+    );
+    this.lambdaFunctions.push(webhookFn);
+
     // Auth handlers
     const registerFn = new lambdaNodejs.NodejsFunction(this, 'RegisterFn', {
       ...nodejsDefaults,
@@ -209,6 +284,10 @@ export class ComputeStack extends cdk.Stack {
       healthFn,
       ratesFn,
       refreshRatesFn,
+      subscribeFn,
+      subStatusFn,
+      cancelSubFn,
+      webhookFn,
       registerFn,
       loginFn,
       getProfileFn,

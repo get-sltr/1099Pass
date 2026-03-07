@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Save,
   Building2,
@@ -9,6 +9,7 @@ import {
   Shield,
   CreditCard,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,26 +19,25 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAuthStore } from '@/store';
 import { formatCurrency, cn } from '@/lib/utils';
+import { SquarePaymentForm } from '@/components/billing/square-payment-form';
+
+const SQUARE_APP_ID = process.env.NEXT_PUBLIC_SQUARE_APP_ID || '';
+const SQUARE_LOCATION_ID = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID || '';
 
 const subscriptionPlans = [
   {
-    id: 'starter',
-    name: 'Starter',
-    price: 99,
-    features: [
-      '100 report views/month',
-      '25 borrower contacts/month',
-      '1 team member',
-      'Basic analytics',
-    ],
-    current: false,
-  },
-  {
-    id: 'professional',
-    name: 'Professional',
-    price: 299,
+    id: 'PRO',
+    name: 'Monthly Pro',
+    price: 49.99,
+    priceHidden: false,
     features: [
       '500 report views/month',
       '150 borrower contacts/month',
@@ -45,12 +45,12 @@ const subscriptionPlans = [
       'Advanced analytics',
       'Priority support',
     ],
-    current: true,
   },
   {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 799,
+    id: 'ULTRA',
+    name: 'Monthly Ultra',
+    price: 499,
+    priceHidden: true,
     features: [
       'Unlimited report views',
       'Unlimited contacts',
@@ -59,15 +59,16 @@ const subscriptionPlans = [
       'Dedicated support',
       'API access',
     ],
-    current: false,
   },
 ];
 
-const usageStats = {
-  reportViews: { used: 347, limit: 500 },
-  contacts: { used: 89, limit: 150 },
-  teamMembers: { used: 4, limit: 5 },
-};
+
+interface ActiveSubscription {
+  subscriptionId: string;
+  tier: string;
+  status: string;
+  currentPeriodEnd?: string;
+}
 
 export default function SettingsPage() {
   const { user } = useAuthStore();
@@ -83,9 +84,50 @@ export default function SettingsPage() {
   const [orgPhone, setOrgPhone] = useState('(555) 123-4567');
   const [orgWebsite, setOrgWebsite] = useState('https://quickmortgage.com');
 
+  // Billing state
+  const [activeSub, setActiveSub] = useState<ActiveSubscription | null>(null);
+  const [subLoading, setSubLoading] = useState(true);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<typeof subscriptionPlans[0] | null>(null);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const [cancellingSubscription, setCancellingSubscription] = useState(false);
+
+  const fetchSubscription = useCallback(async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${apiUrl}/subscriptions/current`, { credentials: 'include' });
+      const json = await res.json();
+      setActiveSub(json.data ?? null);
+    } catch {
+      setActiveSub(null);
+    } finally {
+      setSubLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchSubscription(); }, [fetchSubscription]);
+
+  const handleCancelSubscription = async () => {
+    if (!confirm('Are you sure you want to cancel your subscription?')) return;
+    setCancellingSubscription(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${apiUrl}/subscriptions/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setActiveSub(null);
+      }
+    } catch {
+      setBillingError('Failed to cancel subscription');
+    } finally {
+      setCancellingSubscription(false);
+    }
+  };
+
   const handleSave = () => {
     setHasChanges(false);
-    // In a real app, this would save to the backend
   };
 
   return (
@@ -415,162 +457,184 @@ export default function SettingsPage() {
 
         {/* Billing Tab */}
         <TabsContent value="billing" className="space-y-6">
-          {/* Current Plan */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
-                Current Plan
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 rounded-lg bg-accent/5 border border-accent/20">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-bold">Professional</h3>
-                    <Badge variant="success">Active</Badge>
-                  </div>
-                  <p className="text-muted-foreground">
-                    {formatCurrency(299)}/month • Renews Feb 15, 2024
-                  </p>
-                </div>
-                <Button variant="outline">Change Plan</Button>
-              </div>
-            </CardContent>
-          </Card>
+          {subLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {/* Current Plan */}
+              {activeSub && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Current Plan
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-accent/5 border border-accent/20">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-bold">
+                            {subscriptionPlans.find((p) => p.id === activeSub.tier)?.name ?? activeSub.tier}
+                          </h3>
+                          <Badge variant="success">{activeSub.status}</Badge>
+                        </div>
+                        <p className="text-muted-foreground">
+                          {formatCurrency(
+                            subscriptionPlans.find((p) => p.id === activeSub.tier)?.price ?? 0,
+                            { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                          )}
+                          /month
+                          {activeSub.currentPeriodEnd &&
+                            ` • Renews ${new Date(activeSub.currentPeriodEnd).toLocaleDateString()}`}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={handleCancelSubscription}
+                        disabled={cancellingSubscription}
+                      >
+                        {cancellingSubscription ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cancelling...</>
+                        ) : (
+                          'Cancel Plan'
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-          {/* Usage */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Current Usage</CardTitle>
-              <CardDescription>
-                Your usage resets on Feb 15, 2024
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Report Views</span>
-                  <span className="font-mono">
-                    {usageStats.reportViews.used} / {usageStats.reportViews.limit}
-                  </span>
+              {billingError && (
+                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+                  {billingError}
                 </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent rounded-full"
-                    style={{
-                      width: `${
-                        (usageStats.reportViews.used / usageStats.reportViews.limit) *
-                        100
-                      }%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Borrower Contacts</span>
-                  <span className="font-mono">
-                    {usageStats.contacts.used} / {usageStats.contacts.limit}
-                  </span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent rounded-full"
-                    style={{
-                      width: `${
-                        (usageStats.contacts.used / usageStats.contacts.limit) * 100
-                      }%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Team Members</span>
-                  <span className="font-mono">
-                    {usageStats.teamMembers.used} / {usageStats.teamMembers.limit}
-                  </span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent rounded-full"
-                    style={{
-                      width: `${
-                        (usageStats.teamMembers.used / usageStats.teamMembers.limit) *
-                        100
-                      }%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              )}
 
-          {/* Available Plans */}
-          <div className="grid gap-4 md:grid-cols-3">
-            {subscriptionPlans.map((plan) => (
-              <Card
-                key={plan.id}
-                className={cn(
-                  plan.current && 'border-accent border-2'
-                )}
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{plan.name}</CardTitle>
-                    {plan.current && <Badge>Current</Badge>}
-                  </div>
-                  <div className="mt-2">
-                    <span className="text-3xl font-bold">
-                      {formatCurrency(plan.price)}
-                    </span>
-                    <span className="text-muted-foreground">/month</span>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm">
-                        <Check className="h-4 w-4 text-positive" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="w-full mt-4"
-                    variant={plan.current ? 'outline' : 'default'}
-                    disabled={plan.current}
-                  >
-                    {plan.current ? 'Current Plan' : 'Upgrade'}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Payment Method */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Payment Method</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between p-4 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-14 rounded bg-muted flex items-center justify-center">
-                    <span className="text-xs font-bold">VISA</span>
-                  </div>
-                  <div>
-                    <p className="font-medium font-mono">•••• •••• •••• 4242</p>
-                    <p className="text-sm text-muted-foreground">Expires 12/25</p>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">
-                  Update
-                </Button>
+              {/* Available Plans */}
+              <div className="grid gap-4 md:grid-cols-2 max-w-3xl mx-auto">
+                {subscriptionPlans.map((plan) => {
+                  const isCurrent = activeSub?.tier === plan.id;
+                  const isUltra = plan.id === 'ULTRA';
+                  return (
+                    <Card
+                      key={plan.id}
+                      className={cn(
+                        isCurrent && 'border-accent border-2',
+                        isUltra && 'relative overflow-hidden',
+                      )}
+                    >
+                      {isUltra && (
+                        <div className="absolute top-3 right-3">
+                          <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                        </div>
+                      )}
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">{plan.name}</CardTitle>
+                          {isCurrent && <Badge>Current</Badge>}
+                        </div>
+                        <div className="mt-2">
+                          {plan.priceHidden ? (
+                            <span className="text-2xl font-bold text-muted-foreground">
+                              Contact Sales
+                            </span>
+                          ) : (
+                            <>
+                              <span className="text-3xl font-bold">
+                                {formatCurrency(plan.price, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                              <span className="text-muted-foreground">/month</span>
+                            </>
+                          )}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2">
+                          {plan.features.map((feature) => (
+                            <li
+                              key={feature}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <Check className="h-4 w-4 text-positive" />
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                        {plan.priceHidden ? (
+                          <Button className="w-full mt-4" variant="outline" disabled>
+                            Contact Sales
+                          </Button>
+                        ) : (
+                          <Button
+                            className="w-full mt-4"
+                            variant={isCurrent ? 'outline' : 'default'}
+                            disabled={isCurrent || !SQUARE_APP_ID}
+                            onClick={() => {
+                              setSelectedPlan(plan);
+                              setBillingError(null);
+                              setPaymentDialogOpen(true);
+                            }}
+                          >
+                            {isCurrent
+                              ? 'Current Plan'
+                              : activeSub
+                                ? 'Switch Plan'
+                                : 'Subscribe'}
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
-            </CardContent>
-          </Card>
+
+              {!SQUARE_APP_ID && (
+                <p className="text-xs text-center text-muted-foreground">
+                  Payment processing is not configured yet. Set NEXT_PUBLIC_SQUARE_APP_ID
+                  and NEXT_PUBLIC_SQUARE_LOCATION_ID in your environment.
+                </p>
+              )}
+
+              <p className="text-xs text-center text-muted-foreground">
+                Payments processed securely by Square. Subscriptions renew monthly and
+                can be cancelled any time.
+              </p>
+            </>
+          )}
+
+          {/* Square Payment Dialog */}
+          <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Subscribe to {selectedPlan?.name}</DialogTitle>
+              </DialogHeader>
+              {selectedPlan && SQUARE_APP_ID && SQUARE_LOCATION_ID && (
+                <SquarePaymentForm
+                  applicationId={SQUARE_APP_ID}
+                  locationId={SQUARE_LOCATION_ID}
+                  planId={selectedPlan.id}
+                  planName={selectedPlan.name}
+                  priceLabel={formatCurrency(selectedPlan.price)}
+                  onSuccess={(data) => {
+                    setPaymentDialogOpen(false);
+                    setActiveSub({
+                      subscriptionId: data.subscriptionId,
+                      tier: data.tier || selectedPlan.id,
+                      status: 'ACTIVE',
+                    });
+                  }}
+                  onError={(msg) => {
+                    setBillingError(msg);
+                    setPaymentDialogOpen(false);
+                  }}
+                  onCancel={() => setPaymentDialogOpen(false)}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
       </Tabs>
     </div>

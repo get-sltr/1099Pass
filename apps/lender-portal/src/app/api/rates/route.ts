@@ -1,9 +1,14 @@
 /**
  * GET /api/rates — dev proxy to FRED when NEXT_PUBLIC_API_URL is not set.
  * Production should use the backend GET /rates Lambda.
+ * Always request file_type=json to avoid XML parsing.
  */
 
 const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
+
+/** Per FRED terms: credit the source. */
+const FRED_SOURCE_CREDIT =
+  'Source: Freddie Mac, 30-Year and 15-Year Fixed Rate Mortgage Averages in the United States [MORTGAGE30US, MORTGAGE15US], retrieved from FRED, Federal Reserve Bank of St. Louis.';
 
 async function fetchLatest(seriesId: string): Promise<{ value: number; date: string } | null> {
   const key = process.env.FRED_API_KEY;
@@ -56,6 +61,7 @@ export async function GET() {
       },
       disclaimer:
         'Rates are from public sources (FRED) for educational purposes only. Not an offer or guarantee. Actual rates depend on lender and borrower.',
+      sourceCredit: FRED_SOURCE_CREDIT,
     };
 
     return Response.json(body, {

@@ -345,6 +345,7 @@ This clean regulatory position means we can launch fast without licensing delays
 
 | Doc | Purpose |
 |-----|---------|
+| [docs/1099PASS-FINAL-BUILD.md](docs/1099PASS-FINAL-BUILD.md) | **Canonical build spec** (March 2026): brand, pricing, design system, onboarding, features, security, schema, API, compliance |
 | [docs/1099PASS-BUILD.md](docs/1099PASS-BUILD.md) | Full project context: brand, tech stack, security, features, build order, dev standards |
 | [docs/DEPLOY-LENDER-PORTAL.md](docs/DEPLOY-LENDER-PORTAL.md) | Deploy lender portal to S3 + CloudFront, env vars, CI/CD |
 | [docs/PRODUCTION-READINESS.md](docs/PRODUCTION-READINESS.md) | Production checklist: infra, API, portal, app, security, monitoring |

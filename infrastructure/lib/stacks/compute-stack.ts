@@ -7,6 +7,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -86,20 +88,43 @@ export class ComputeStack extends cdk.Stack {
     props.api.root.addResource('health').addMethod('GET', new apigateway.LambdaIntegration(healthFn));
     this.lambdaFunctions.push(healthFn);
 
-    // Rates (public, no auth) — FRED conventional + non-QM ranges
+    // Rates (public, no auth) — read from rate_cache only. Updated by refresh Lambda (Thursdays).
+    const fredApiKeySecret = new secretsmanager.Secret(this, 'FredApiKeySecret', {
+      secretName: `pass1099-${props.environment}-fred-api-key`,
+      description: 'FRED API key for live mortgage rates (MORTGAGE30US, MORTGAGE15US). Set the secret value in AWS Console.',
+      encryptionKey: props.encryptionKey,
+    });
     const ratesFn = new lambdaNodejs.NodejsFunction(this, 'RatesFn', {
       ...nodejsDefaults,
       functionName: `pass1099-${props.environment}-rates`,
       entry: path.join(apiHandlersRoot, 'rates', 'index.ts'),
       handler: 'handler',
       timeout: cdk.Duration.seconds(10),
-      environment: {
-        ...commonEnv,
-        FRED_API_KEY: process.env.FRED_API_KEY ?? '',
-      },
+      environment: commonEnv,
     });
     props.api.root.addResource('rates').addMethod('GET', new apigateway.LambdaIntegration(ratesFn));
     this.lambdaFunctions.push(ratesFn);
+
+    // Scheduled: refresh rate_cache from FRED every Thursday 1:00 PM ET (after 12 PM ET release). Stays under 30 req/min.
+    const refreshRatesFn = new lambdaNodejs.NodejsFunction(this, 'RefreshRatesFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-rates-refresh`,
+      entry: path.join(apiHandlersRoot, 'rates', 'refresh.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        ...commonEnv,
+        FRED_SECRET_ARN: fredApiKeySecret.secretArn,
+      },
+    });
+    fredApiKeySecret.grantRead(refreshRatesFn);
+    this.lambdaFunctions.push(refreshRatesFn);
+
+    const rateRefreshRule = new events.Rule(this, 'RateRefreshSchedule', {
+      schedule: events.Schedule.cron({ minute: '0', hour: '18', weekDay: 'THU', month: '*', year: '*' }),
+      description: 'Fetch FRED rates every Thursday 1:00 PM ET (18:00 UTC) and write to rate_cache',
+    });
+    rateRefreshRule.addTarget(new targets.LambdaFunction(refreshRatesFn));
 
     // Auth handlers
     const registerFn = new lambdaNodejs.NodejsFunction(this, 'RegisterFn', {
@@ -183,6 +208,7 @@ export class ComputeStack extends cdk.Stack {
     const allFunctions = [
       healthFn,
       ratesFn,
+      refreshRatesFn,
       registerFn,
       loginFn,
       getProfileFn,

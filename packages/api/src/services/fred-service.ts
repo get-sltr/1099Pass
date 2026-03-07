@@ -1,7 +1,20 @@
 /**
  * FRED (Federal Reserve Economic Data) API client for mortgage rate series.
- * Series: MORTGAGE30US (30-year fixed), MORTGAGE15US (15-year fixed).
  * API key: https://fred.stlouisfed.org/docs/api/api_key.html
+ *
+ * Essential FRED series codes (weekly refresh cron uses 30yr + 15yr only):
+ *
+ * | Loan Type       | FRED Series ID  | Update Frequency        |
+ * |-----------------|-----------------|-------------------------|
+ * | 30-Year Fixed   | MORTGAGE30US    | Weekly (Thursdays)      |
+ * | 15-Year Fixed   | MORTGAGE15US    | Weekly (Thursdays)      |
+ * | 5/1-Year ARM    | MORTGAGE5US     | DISCONTINUED Nov 2022   |
+ * | 10-Year Treasury| DGS10           | Daily (market benchmark) |
+ *
+ * Warning: Freddie Mac discontinued MORTGAGE5US in late 2022. For 5/1 ARM
+ * calculations use a secondary source (e.g. Bankrate or non-QM partner rate sheets).
+ *
+ * Data formatting: Always request file_type=json to avoid parsing XML in TypeScript.
  */
 
 const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
@@ -29,7 +42,7 @@ async function fetchSeries(apiKey: string, seriesId: string): Promise<FredObserv
   const url = new URL(FRED_BASE);
   url.searchParams.set('series_id', seriesId);
   url.searchParams.set('api_key', apiKey);
-  url.searchParams.set('file_type', 'json');
+  url.searchParams.set('file_type', 'json'); // Required: avoid XML parsing in TypeScript
   url.searchParams.set('sort_order', 'desc');
   url.searchParams.set('limit', '1');
 

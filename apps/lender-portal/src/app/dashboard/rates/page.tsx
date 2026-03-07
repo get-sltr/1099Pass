@@ -18,6 +18,7 @@ type RatesResponse = {
     pnl: { min30: number; max30: number; min15: number; max15: number };
   };
   disclaimer: string;
+  sourceCredit?: string;
 };
 
 function formatRate(n: number | null) {
@@ -179,8 +180,13 @@ export default function RatesPage() {
           </Card>
 
           <Card className="border-muted bg-muted/30">
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-3">
               <p className="text-sm text-muted-foreground">{data.disclaimer}</p>
+              {data.sourceCredit && (
+                <p className="text-xs text-muted-foreground border-t border-border pt-3">
+                  {data.sourceCredit}
+                </p>
+              )}
             </CardContent>
           </Card>
         </>

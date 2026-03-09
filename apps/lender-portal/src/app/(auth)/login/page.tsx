@@ -33,13 +33,13 @@ export default function LoginPage() {
       if (email && password) {
         login(
           {
-            id: 'user-1',
+            id: 'e418a4a8-6061-708f-eebd-8e99eb78a85e',
             email,
-            firstName: 'John',
-            lastName: 'Smith',
-            role: 'loan_officer',
-            institutionId: 'inst-123',
-            institutionName: 'Quick Mortgage Co.',
+            firstName: 'Kevin',
+            lastName: 'Minn',
+            role: 'admin',
+            institutionId: 'sltr-digital-001',
+            institutionName: 'SLTR Digital LLC',
           },
           'mock-jwt-token'
         );

@@ -76,11 +76,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (USE_MOCKS) {
         // Mock successful login for development
         const mockUser: AppUser = {
-          id: 'mock-user-123',
+          id: 'e418a4a8-6061-708f-eebd-8e99eb78a85e',
           email,
-          first_name: email.split('@')[0] || 'User',
-          last_name: 'Demo',
-          phone: '+1234567890',
+          first_name: 'Kevin',
+          last_name: 'Minn',
+          phone: null,
           subscription_tier: SubscriptionTier.FREE,
           onboarding_complete: false,
           created_at: new Date().toISOString(),

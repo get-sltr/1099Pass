@@ -5,6 +5,7 @@
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { UnauthorizedError, ForbiddenError } from './error-handler';
+import { query } from '../db/client';
 
 /**
  * Token claims from Cognito
@@ -83,9 +84,9 @@ export function validateClaims(claims: TokenClaims): ValidatedUser {
     throw new UnauthorizedError('Token issued in the future');
   }
 
-  // Validate token use (should be 'id' for Cognito ID tokens)
-  if (claims.token_use && claims.token_use !== 'id') {
-    throw new UnauthorizedError('Invalid token type');
+  // Validate token use (must be 'id' for Cognito ID tokens)
+  if (!claims.token_use || claims.token_use !== 'id') {
+    throw new UnauthorizedError('Invalid token type: must use ID token');
   }
 
   // Validate issuer format (should be Cognito user pool URL)
@@ -140,23 +141,60 @@ export function validateResourceOwnership(
 }
 
 /**
- * Check if lender has access to a borrower's data
+ * Check if lender has access to a borrower's data.
+ * Verifies subscription tier, match status, and lender account standing.
  */
-export function validateLenderAccess(
+export async function validateLenderAccess(
   user: ValidatedUser,
-  _borrowerId: string,
-  _accessType: 'view' | 'message'
-): void {
+  borrowerId: string,
+  accessType: 'view' | 'message'
+): Promise<void> {
   if (user.userType !== 'LENDER') {
     throw new ForbiddenError('Only lenders can access borrower data');
   }
 
-  // Additional validation could check:
-  // - Lender's subscription tier
-  // - If lender has unlocked this borrower
-  // - Geographic restrictions
-  // - Lending criteria match
-  // These would require database lookups
+  // Verify lender account is active and retrieve plan tier
+  const lenderResult = await query<{ id: string; status: string; plan_tier: string }>(
+    `SELECT id, status, plan_tier FROM lenders WHERE cognito_sub = $1`,
+    [user.id]
+  );
+  const lender = lenderResult.rows[0];
+
+  if (!lender) {
+    throw new ForbiddenError('Lender account not found');
+  }
+  if (lender.status !== 'ACTIVE') {
+    throw new ForbiddenError('Lender account is not active');
+  }
+
+  // Messaging requires PROFESSIONAL or ENTERPRISE tier
+  if (accessType === 'message' && lender.plan_tier === 'STARTER') {
+    throw new ForbiddenError('Messaging requires Professional or Enterprise plan');
+  }
+
+  // Verify a match exists between this lender and borrower (borrower consent)
+  const matchResult = await query<{ id: string; status: string }>(
+    `SELECT id, status FROM matches
+     WHERE lender_id = $1 AND borrower_id = $2 AND status != 'DECLINED'
+     LIMIT 1`,
+    [lender.id, borrowerId]
+  );
+
+  if (matchResult.rows.length === 0) {
+    throw new ForbiddenError('No authorized access to this borrower');
+  }
+
+  // Verify lender has an active subscription
+  const subResult = await query<{ id: string }>(
+    `SELECT id FROM subscriptions
+     WHERE user_id = $1 AND user_type = 'LENDER' AND status = 'ACTIVE'
+     LIMIT 1`,
+    [lender.id]
+  );
+
+  if (subResult.rows.length === 0) {
+    throw new ForbiddenError('Active subscription required to access borrower data');
+  }
 }
 
 /**

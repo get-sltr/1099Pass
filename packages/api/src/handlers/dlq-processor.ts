@@ -15,7 +15,6 @@ interface DLQMessage {
   error: {
     name: string;
     message: string;
-    stack?: string;
   };
   failedAt: string;
   retryCount: number;
@@ -266,10 +265,10 @@ async function escalateMessage(
     message: `A message in the Dead Letter Queue has exceeded max retries or encountered a critical error.`,
     details: {
       messageId,
-      error: message.error,
+      errorName: message.error?.name,
+      errorMessage: message.error?.message,
       retryCount: message.retryCount,
       failedAt: message.failedAt,
-      originalQueue: message.originalQueueUrl,
     },
     timestamp: new Date().toISOString(),
   };
@@ -316,7 +315,6 @@ export function createDLQMessage(
     error: {
       name: error.name,
       message: error.message,
-      stack: error.stack,
     },
     failedAt: new Date().toISOString(),
     retryCount,

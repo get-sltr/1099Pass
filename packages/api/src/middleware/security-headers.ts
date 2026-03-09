@@ -71,14 +71,13 @@ export function createCorsHeaders(
   allowedOrigins: string[],
   requestOrigin?: string
 ): Record<string, string> {
-  // Check if request origin is allowed
-  const origin =
-    requestOrigin && allowedOrigins.includes(requestOrigin)
-      ? requestOrigin
-      : allowedOrigins[0] || '*';
+  // Reject requests from disallowed origins — never fall back to wildcard
+  if (!requestOrigin || !allowedOrigins.includes(requestOrigin)) {
+    return {};
+  }
 
   return {
-    'Access-Control-Allow-Origin': origin,
+    'Access-Control-Allow-Origin': requestOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers':
       'Content-Type, Authorization, X-Amz-Date, X-Api-Key, X-Request-Id',

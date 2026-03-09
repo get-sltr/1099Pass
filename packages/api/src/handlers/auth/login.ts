@@ -8,6 +8,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { CognitoIdentityProviderClient, InitiateAuthCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { z } from 'zod';
 import { handleError } from '../../middleware/error-handler';
+import { withRateLimit } from '../../middleware/rate-limiter';
 
 const LoginSchema = z.object({
   email: z.string().email(),
@@ -15,7 +16,18 @@ const LoginSchema = z.object({
   clientType: z.enum(['BORROWER', 'LENDER']).optional().default('BORROWER'),
 });
 
-export const handler: APIGatewayProxyHandler = async (event) => {
+function getLoginIdentifier(event: { body?: string | null }): string {
+  try {
+    const body = event.body ? JSON.parse(event.body) : {};
+    return body.email?.toLowerCase() || 'anonymous';
+  } catch {
+    return 'anonymous';
+  }
+}
+
+const rateLimitedLogin = withRateLimit(5, 300, getLoginIdentifier);
+
+export const handler: APIGatewayProxyHandler = rateLimitedLogin(async (event) => {
   try {
     const body = event.body ? JSON.parse(event.body) : {};
     const parsed = LoginSchema.safeParse(body);
@@ -98,4 +110,4 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
     return handleError(err);
   }
-};
+});

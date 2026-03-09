@@ -175,7 +175,7 @@ export class CicdStack extends cdk.Stack {
           build: {
             commands: [
               'cd infrastructure',
-              'cdk deploy --all --require-approval never --outputs-file cdk-outputs.json',
+              'cdk deploy --all --require-approval broadening --outputs-file cdk-outputs.json',
             ],
           },
         },

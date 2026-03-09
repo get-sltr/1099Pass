@@ -41,8 +41,9 @@ export function SquarePaymentForm({
         applicationId={applicationId}
         locationId={locationId}
         cardTokenizeResponseReceived={async (token) => {
-          if (token.errors?.length) {
-            onError(token.errors.map((e: any) => e.message).join(', '));
+          const tokenAny = token as any;
+          if (tokenAny.errors?.length) {
+            onError(tokenAny.errors.map((e: any) => e.message).join(', '));
             return;
           }
 
@@ -53,7 +54,7 @@ export function SquarePaymentForm({
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
-              body: JSON.stringify({ planId, sourceId: token.token }),
+              body: JSON.stringify({ planId, sourceId: tokenAny.token }),
             });
 
             const json = await res.json();

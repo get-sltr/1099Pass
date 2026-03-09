@@ -17,10 +17,10 @@ import {
 } from '@/components/ui/select';
 
 const benefits = [
-  'Access verified income data from 50K+ gig workers',
-  'Reduce loan default risk with comprehensive verification',
-  'Streamline underwriting with standardized reports',
-  'Connect directly with qualified borrowers',
+  'Pre-verified borrower income packages delivered to your dashboard',
+  'Built for non-traditional income: 1099, bank statement, P&L',
+  'Standardized reports that streamline underwriting',
+  'Pipeline tracking and rate monitoring in one portal',
 ];
 
 export default function RegisterPage() {
@@ -94,16 +94,10 @@ export default function RegisterPage() {
               </li>
             ))}
           </ul>
-          <div className="pt-8">
-            <p className="text-sm text-primary-foreground/60">
-              Trusted by leading mortgage lenders, credit unions, and fintech companies
-            </p>
-          </div>
         </div>
 
-        <p className="text-sm text-primary-foreground/60 font-medium">Stand by for the biggest update we&apos;re going to make.</p>
         <p className="text-sm text-primary-foreground/60">
-          © 2024 1099Pass. All rights reserved.
+          2026 1099Pass by SLTR Digital LLC. All rights reserved.
         </p>
       </div>
 

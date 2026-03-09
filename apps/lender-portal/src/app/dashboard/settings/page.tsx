@@ -81,8 +81,8 @@ export default function SettingsPage() {
 
   // Organization form state
   const [orgName, setOrgName] = useState(user?.institutionName || '');
-  const [orgPhone, setOrgPhone] = useState('(555) 123-4567');
-  const [orgWebsite, setOrgWebsite] = useState('https://quickmortgage.com');
+  const [orgPhone, setOrgPhone] = useState('');
+  const [orgWebsite, setOrgWebsite] = useState('');
 
   // Billing state
   const [activeSub, setActiveSub] = useState<ActiveSubscription | null>(null);
@@ -222,7 +222,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Role</Label>
-                  <Input value="Loan Officer" disabled />
+                  <Input value={user?.role || ''} disabled />
                 </div>
               </div>
             </CardContent>
@@ -294,15 +294,11 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {['CA', 'TX', 'FL', 'NY', 'WA', 'AZ', 'OR', 'CO'].map((state) => (
-                    <Badge key={state} variant="secondary">
-                      {state}
-                    </Badge>
-                  ))}
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  No licenses configured yet. Add your state licenses to determine which borrowers you can contact.
+                </p>
                 <Button variant="outline" size="sm">
-                  Manage Licenses
+                  Add Licenses
                 </Button>
               </div>
             </CardContent>
@@ -407,49 +403,13 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between p-4 rounded-lg border">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-positive/10 flex items-center justify-center">
-                    <Check className="h-5 w-5 text-positive" />
-                  </div>
-                  <div>
-                    <p className="font-medium">2FA Enabled</p>
-                    <p className="text-sm text-muted-foreground">
-                      Using authenticator app
-                    </p>
-                  </div>
-                </div>
-                <Button variant="outline">Manage</Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Active Sessions</CardTitle>
-              <CardDescription>
-                Manage your active sessions across devices
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-lg border">
                 <div>
-                  <p className="font-medium">Current Session</p>
+                  <p className="font-medium">2FA not configured</p>
                   <p className="text-sm text-muted-foreground">
-                    Chrome on macOS • Los Angeles, CA
+                    Protect your account with two-factor authentication
                   </p>
                 </div>
-                <Badge variant="success">Active</Badge>
-              </div>
-              <div className="flex items-center justify-between p-4 rounded-lg border">
-                <div>
-                  <p className="font-medium">Mobile App</p>
-                  <p className="text-sm text-muted-foreground">
-                    iPhone 14 Pro • Last active 2 hours ago
-                  </p>
-                </div>
-                <Button variant="ghost" size="sm">
-                  Revoke
-                </Button>
+                <Button variant="outline">Enable 2FA</Button>
               </div>
             </CardContent>
           </Card>

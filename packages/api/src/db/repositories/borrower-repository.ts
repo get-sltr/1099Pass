@@ -67,6 +67,21 @@ export async function findByCognitoSub(cognitoSub: string): Promise<Borrower | n
   return result.rows[0] ? mapRow(result.rows[0]) : null;
 }
 
+const ALLOWED_UPDATE_FIELDS: ReadonlySet<string> = new Set([
+  'email',
+  'phone',
+  'first_name',
+  'last_name',
+  'date_of_birth',
+  'street_address',
+  'city',
+  'state',
+  'zip_code',
+  'kyc_status',
+  'subscription_tier',
+  'profile_image_url',
+]);
+
 export async function update(id: string, data: Partial<Omit<Borrower, 'id' | 'created_at' | 'updated_at' | 'cognito_sub'>>): Promise<Borrower> {
   const existing = await findById(id);
   if (!existing) throw new NotFoundError('Borrower');
@@ -77,6 +92,9 @@ export async function update(id: string, data: Partial<Omit<Borrower, 'id' | 'cr
 
   for (const [key, value] of Object.entries(data)) {
     if (value !== undefined) {
+      if (!ALLOWED_UPDATE_FIELDS.has(key)) {
+        throw new Error(`Invalid update field: ${key}`);
+      }
       fields.push(`${key} = $${i}`);
       values.push(value);
       i++;

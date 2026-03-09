@@ -74,29 +74,10 @@ export default function LoginPage() {
             Connect with qualified borrowers who have demonstrated consistent income
             and verified financial profiles.
           </p>
-          <div className="grid grid-cols-2 gap-4 pt-8">
-            <div className="p-4 rounded-lg bg-white/10">
-              <p className="text-3xl font-bold">50K+</p>
-              <p className="text-sm text-primary-foreground/80">Verified Borrowers</p>
-            </div>
-            <div className="p-4 rounded-lg bg-white/10">
-              <p className="text-3xl font-bold">$2.1B</p>
-              <p className="text-sm text-primary-foreground/80">Income Verified</p>
-            </div>
-            <div className="p-4 rounded-lg bg-white/10">
-              <p className="text-3xl font-bold">98%</p>
-              <p className="text-sm text-primary-foreground/80">Verification Accuracy</p>
-            </div>
-            <div className="p-4 rounded-lg bg-white/10">
-              <p className="text-3xl font-bold">500+</p>
-              <p className="text-sm text-primary-foreground/80">Lending Partners</p>
-            </div>
           </div>
-        </div>
 
-        <p className="text-sm text-primary-foreground/60 font-medium">Stand by for the biggest update we&apos;re going to make.</p>
         <p className="text-sm text-primary-foreground/60">
-          © 2024 1099Pass. All rights reserved.
+          2026 1099Pass by SLTR Digital LLC. All rights reserved.
         </p>
       </div>
 

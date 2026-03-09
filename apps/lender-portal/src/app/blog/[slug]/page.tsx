@@ -193,8 +193,7 @@ export default async function BlogPostPage({ params }: Props) {
               </Link>
             </div>
           </div>
-          <p className="text-center text-sm text-muted-foreground font-medium">Stand by for the biggest update we&apos;re going to make.</p>
-          <p className="text-center text-sm text-muted-foreground">© 2024 1099Pass. All rights reserved.</p>
+          <p className="text-center text-sm text-muted-foreground">2026 1099Pass by SLTR Digital LLC. All rights reserved.</p>
         </div>
       </footer>
     </div>

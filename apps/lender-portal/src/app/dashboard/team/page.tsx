@@ -2,12 +2,8 @@
 
 import { useState } from 'react';
 import {
-  Search,
-  MoreVertical,
   Mail,
   Shield,
-  Trash2,
-  Edit,
   UserPlus,
   Users,
   CheckCircle,
@@ -18,8 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Select,
   SelectContent,
@@ -36,82 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAuthStore } from '@/store';
-import { cn } from '@/lib/utils';
-
-// Mock team data
-const mockTeamMembers = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Smith',
-    email: 'john.smith@quickmortgage.com',
-    role: 'admin' as const,
-    status: 'active' as const,
-    lastActive: '2 min ago',
-    reportsViewed: 245,
-    contactsMade: 48,
-  },
-  {
-    id: '2',
-    firstName: 'Sarah',
-    lastName: 'Johnson',
-    email: 'sarah.johnson@quickmortgage.com',
-    role: 'loan_officer' as const,
-    status: 'active' as const,
-    lastActive: '15 min ago',
-    reportsViewed: 198,
-    contactsMade: 42,
-  },
-  {
-    id: '3',
-    firstName: 'Mike',
-    lastName: 'Davis',
-    email: 'mike.davis@quickmortgage.com',
-    role: 'loan_officer' as const,
-    status: 'active' as const,
-    lastActive: '1 hour ago',
-    reportsViewed: 167,
-    contactsMade: 35,
-  },
-  {
-    id: '4',
-    firstName: 'Emily',
-    lastName: 'Brown',
-    email: 'emily.brown@quickmortgage.com',
-    role: 'underwriter' as const,
-    status: 'inactive' as const,
-    lastActive: '3 days ago',
-    reportsViewed: 142,
-    contactsMade: 28,
-  },
-];
-
-const mockInvitations = [
-  {
-    id: '1',
-    email: 'alex.wilson@quickmortgage.com',
-    role: 'loan_officer',
-    invitedAt: '2024-01-14',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    email: 'jennifer.lee@quickmortgage.com',
-    role: 'underwriter',
-    invitedAt: '2024-01-12',
-    status: 'expired',
-  },
-];
-
 const roleLabels = {
   admin: 'Admin',
   loan_officer: 'Loan Officer',
@@ -125,21 +44,11 @@ const roleDescriptions = {
 };
 
 export default function TeamPage() {
-  const { user } = useAuthStore();
-  const [searchQuery, setSearchQuery] = useState('');
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<string>('loan_officer');
 
-  const filteredMembers = mockTeamMembers.filter(
-    (member) =>
-      member.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const handleInvite = () => {
-    // In a real app, this would send the invitation
     setShowInviteDialog(false);
     setInviteEmail('');
     setInviteRole('loan_officer');
@@ -218,7 +127,7 @@ export default function TeamPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Members</p>
-                <p className="text-2xl font-bold">{mockTeamMembers.length}</p>
+                <p className="text-2xl font-bold">0</p>
               </div>
             </div>
           </CardContent>
@@ -231,9 +140,7 @@ export default function TeamPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active</p>
-                <p className="text-2xl font-bold">
-                  {mockTeamMembers.filter((m) => m.status === 'active').length}
-                </p>
+                <p className="text-2xl font-bold">0</p>
               </div>
             </div>
           </CardContent>
@@ -246,9 +153,7 @@ export default function TeamPage() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Pending Invites</p>
-                <p className="text-2xl font-bold">
-                  {mockInvitations.filter((i) => i.status === 'pending').length}
-                </p>
+                <p className="text-2xl font-bold">0</p>
               </div>
             </div>
           </CardContent>
@@ -264,129 +169,12 @@ export default function TeamPage() {
 
         {/* Team Members */}
         <TabsContent value="members" className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search team members..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select defaultValue="all">
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admins</SelectItem>
-                <SelectItem value="loan_officer">Loan Officers</SelectItem>
-                <SelectItem value="underwriter">Underwriters</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           <Card>
-            <CardContent className="p-0">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Member</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Last Active</th>
-                    <th>Activity</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredMembers.map((member) => (
-                    <tr key={member.id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarFallback className="bg-accent/10 text-accent text-xs">
-                              {member.firstName[0]}
-                              {member.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">
-                              {member.firstName} {member.lastName}
-                              {member.id === user?.id && (
-                                <Badge variant="secondary" className="ml-2 text-xs">
-                                  You
-                                </Badge>
-                              )}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              {member.email}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <Badge
-                          variant={member.role === 'admin' ? 'default' : 'secondary'}
-                        >
-                          {roleLabels[member.role]}
-                        </Badge>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={cn(
-                              'h-2 w-2 rounded-full',
-                              member.status === 'active'
-                                ? 'bg-positive'
-                                : 'bg-muted-foreground'
-                            )}
-                          />
-                          <span className="capitalize">{member.status}</span>
-                        </div>
-                      </td>
-                      <td className="text-muted-foreground">{member.lastActive}</td>
-                      <td>
-                        <div className="text-sm">
-                          <span className="font-mono">{member.reportsViewed}</span>{' '}
-                          views,{' '}
-                          <span className="font-mono">{member.contactsMade}</span>{' '}
-                          contacts
-                        </div>
-                      </td>
-                      <td>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Shield className="mr-2 h-4 w-4" />
-                              Change Role
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Mail className="mr-2 h-4 w-4" />
-                              Send Email
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-negative">
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Remove
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <CardContent className="p-8 text-center">
+              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">
+                No team members yet. Invite colleagues to collaborate on borrower reports and pipeline management.
+              </p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -394,57 +182,9 @@ export default function TeamPage() {
         {/* Pending Invitations */}
         <TabsContent value="invitations" className="space-y-4">
           <Card>
-            <CardContent className="p-0">
-              {mockInvitations.length > 0 ? (
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Email</th>
-                      <th>Role</th>
-                      <th>Invited</th>
-                      <th>Status</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {mockInvitations.map((invite) => (
-                      <tr key={invite.id}>
-                        <td className="font-medium">{invite.email}</td>
-                        <td>
-                          <Badge variant="secondary">
-                            {roleLabels[invite.role as keyof typeof roleLabels]}
-                          </Badge>
-                        </td>
-                        <td className="text-muted-foreground">{invite.invitedAt}</td>
-                        <td>
-                          <Badge
-                            variant={
-                              invite.status === 'pending' ? 'warning' : 'secondary'
-                            }
-                          >
-                            {invite.status}
-                          </Badge>
-                        </td>
-                        <td>
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm">
-                              Resend
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <XCircle className="h-4 w-4 text-negative" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="p-8 text-center">
-                  <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">No pending invitations</p>
-                </div>
-              )}
+            <CardContent className="p-8 text-center">
+              <Mail className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">No pending invitations</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -473,7 +213,7 @@ export default function TeamPage() {
                         </li>
                         <li className="flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-positive" />
-                          Access billing & subscription
+                          Access billing and subscription
                         </li>
                         <li className="flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-positive" />
@@ -481,7 +221,7 @@ export default function TeamPage() {
                         </li>
                         <li className="flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-positive" />
-                          View all reports & analytics
+                          View all reports and analytics
                         </li>
                         <li className="flex items-center gap-2">
                           <CheckCircle className="h-4 w-4 text-positive" />

@@ -92,7 +92,6 @@ export class ComputeStack extends cdk.Stack {
     const fredApiKeySecret = new secretsmanager.Secret(this, 'FredApiKeySecret', {
       secretName: `pass1099-${props.environment}-fred-api-key`,
       description: 'FRED API key for live mortgage rates (MORTGAGE30US, MORTGAGE15US). Set the secret value in AWS Console.',
-      encryptionKey: props.encryptionKey,
     });
     const ratesFn = new lambdaNodejs.NodejsFunction(this, 'RatesFn', {
       ...nodejsDefaults,
@@ -132,7 +131,6 @@ export class ComputeStack extends cdk.Stack {
     const squareSecret = new secretsmanager.Secret(this, 'SquareAccessTokenSecret', {
       secretName: `pass1099-${props.environment}-square-access-token`,
       description: 'Square access token for lender subscription billing. Set the value in AWS Console.',
-      encryptionKey: props.encryptionKey,
     });
 
     const subscriptionsResource = props.api.root.addResource('subscriptions');

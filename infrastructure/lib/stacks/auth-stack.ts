@@ -38,7 +38,7 @@ export class AuthStack extends cdk.Stack {
       },
       mfa: cognito.Mfa.OPTIONAL,
       mfaSecondFactor: { sms: true, otp: true },
-      accountRecovery: cognito.AccountRecovery.EMAIL_AND_PHONE_WITHOUT_MFA,
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
@@ -47,7 +47,8 @@ export class AuthStack extends cdk.Stack {
       authFlows: { userPassword: true, userSrp: true },
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),
-      refreshTokenValidity: cdk.Duration.days(30),
+      refreshTokenValidity: cdk.Duration.days(7),
+      enableTokenRevocation: true,
     });
 
     this.lenderClient = this.userPool.addClient('LenderPortalClient', {
@@ -55,7 +56,8 @@ export class AuthStack extends cdk.Stack {
       authFlows: { userPassword: true, userSrp: true },
       accessTokenValidity: cdk.Duration.hours(1),
       idTokenValidity: cdk.Duration.hours(1),
-      refreshTokenValidity: cdk.Duration.days(30),
+      refreshTokenValidity: cdk.Duration.days(7),
+      enableTokenRevocation: true,
     });
 
     new cdk.CfnOutput(this, 'UserPoolId', { value: this.userPool.userPoolId });

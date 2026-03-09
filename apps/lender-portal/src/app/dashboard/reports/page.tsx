@@ -1,22 +1,18 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
   Search,
   Download,
   Star,
-  StarOff,
-  ChevronLeft,
-  ChevronRight,
   SlidersHorizontal,
-  Save,
+  Inbox,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge, ScoreBadge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -26,125 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { useReportsStore } from '@/store';
-import { formatCurrency, anonymizeBorrowerId } from '@/lib/utils';
-
-// Mock data for reports
-const mockReports = [
-  {
-    id: 'brw-a1b2c3d4',
-    score: 85,
-    income: 72500,
-    sources: 3,
-    primarySource: 'Uber',
-    loanType: 'mortgage',
-    state: 'CA',
-    yearsActive: 2.5,
-    trend: 'growing' as const,
-    lastUpdated: '2024-01-15',
-    verified: true,
-  },
-  {
-    id: 'brw-e5f6g7h8',
-    score: 78,
-    income: 58200,
-    sources: 2,
-    primarySource: 'DoorDash',
-    loanType: 'auto',
-    state: 'TX',
-    yearsActive: 1.8,
-    trend: 'stable' as const,
-    lastUpdated: '2024-01-14',
-    verified: true,
-  },
-  {
-    id: 'brw-i9j0k1l2',
-    score: 72,
-    income: 45800,
-    sources: 4,
-    primarySource: 'Freelance',
-    loanType: 'mortgage',
-    state: 'FL',
-    yearsActive: 3.2,
-    trend: 'growing' as const,
-    lastUpdated: '2024-01-14',
-    verified: true,
-  },
-  {
-    id: 'brw-m3n4o5p6',
-    score: 68,
-    income: 62100,
-    sources: 2,
-    primarySource: 'Lyft',
-    loanType: 'personal',
-    state: 'NY',
-    yearsActive: 1.2,
-    trend: 'declining' as const,
-    lastUpdated: '2024-01-13',
-    verified: false,
-  },
-  {
-    id: 'brw-q7r8s9t0',
-    score: 91,
-    income: 95400,
-    sources: 5,
-    primarySource: 'Multiple',
-    loanType: 'mortgage',
-    state: 'WA',
-    yearsActive: 4.1,
-    trend: 'growing' as const,
-    lastUpdated: '2024-01-13',
-    verified: true,
-  },
-  {
-    id: 'brw-u1v2w3x4',
-    score: 65,
-    income: 38900,
-    sources: 1,
-    primarySource: 'Instacart',
-    loanType: 'auto',
-    state: 'AZ',
-    yearsActive: 0.8,
-    trend: 'stable' as const,
-    lastUpdated: '2024-01-12',
-    verified: true,
-  },
-  {
-    id: 'brw-y5z6a7b8',
-    score: 82,
-    income: 67300,
-    sources: 3,
-    primarySource: 'Etsy',
-    loanType: 'mortgage',
-    state: 'OR',
-    yearsActive: 2.9,
-    trend: 'growing' as const,
-    lastUpdated: '2024-01-12',
-    verified: true,
-  },
-  {
-    id: 'brw-c9d0e1f2',
-    score: 74,
-    income: 51600,
-    sources: 2,
-    primarySource: 'Uber',
-    loanType: 'personal',
-    state: 'CO',
-    yearsActive: 1.5,
-    trend: 'stable' as const,
-    lastUpdated: '2024-01-11',
-    verified: true,
-  },
-];
+import { formatCurrency } from '@/lib/utils';
 
 const incomeSourceOptions = [
   'Uber',
@@ -158,16 +37,8 @@ const incomeSourceOptions = [
 
 const stateOptions = ['CA', 'TX', 'FL', 'NY', 'WA', 'AZ', 'OR', 'CO'];
 
-const savedSearches = [
-  { id: '1', name: 'High Score Mortgage', count: 23 },
-  { id: '2', name: 'CA Borrowers', count: 15 },
-  { id: '3', name: 'Growing Income', count: 42 },
-];
-
 export default function ReportsPage() {
-  const router = useRouter();
-  const { shortlist, addToShortlist, removeFromShortlist, isInShortlist } =
-    useReportsStore();
+  const { shortlist } = useReportsStore();
 
   // Filter state
   const [showFilters, setShowFilters] = useState(true);
@@ -179,85 +50,6 @@ export default function ReportsPage() {
   const [selectedLoanType, setSelectedLoanType] = useState<string>('all');
   const [selectedTrend, setSelectedTrend] = useState<string>('all');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 10;
-
-  // Sort state
-  const [sortField, setSortField] = useState<string>('score');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-
-  // Filter reports
-  const filteredReports = useMemo(() => {
-    return mockReports.filter((report) => {
-      if (searchQuery && !report.id.toLowerCase().includes(searchQuery.toLowerCase())) {
-        return false;
-      }
-      if (report.score < scoreRange[0] || report.score > scoreRange[1]) {
-        return false;
-      }
-      if (report.income < incomeRange[0] || report.income > incomeRange[1]) {
-        return false;
-      }
-      if (selectedSources.length > 0 && !selectedSources.includes(report.primarySource)) {
-        return false;
-      }
-      if (selectedStates.length > 0 && !selectedStates.includes(report.state)) {
-        return false;
-      }
-      if (selectedLoanType !== 'all' && report.loanType !== selectedLoanType) {
-        return false;
-      }
-      if (selectedTrend !== 'all' && report.trend !== selectedTrend) {
-        return false;
-      }
-      if (verifiedOnly && !report.verified) {
-        return false;
-      }
-      return true;
-    });
-  }, [
-    searchQuery,
-    scoreRange,
-    incomeRange,
-    selectedSources,
-    selectedStates,
-    selectedLoanType,
-    selectedTrend,
-    verifiedOnly,
-  ]);
-
-  // Sort reports
-  const sortedReports = useMemo(() => {
-    return [...filteredReports].sort((a, b) => {
-      let comparison = 0;
-      switch (sortField) {
-        case 'score':
-          comparison = a.score - b.score;
-          break;
-        case 'income':
-          comparison = a.income - b.income;
-          break;
-        case 'sources':
-          comparison = a.sources - b.sources;
-          break;
-        case 'yearsActive':
-          comparison = a.yearsActive - b.yearsActive;
-          break;
-        default:
-          comparison = 0;
-      }
-      return sortDirection === 'asc' ? comparison : -comparison;
-    });
-  }, [filteredReports, sortField, sortDirection]);
-
-  // Paginate
-  const paginatedReports = sortedReports.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-  const totalPages = Math.ceil(sortedReports.length / pageSize);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -280,23 +72,6 @@ export default function ReportsPage() {
     setSelectedStates((prev) =>
       prev.includes(state) ? prev.filter((s) => s !== state) : [...prev, state]
     );
-  };
-
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortField(field);
-      setSortDirection('desc');
-    }
-  };
-
-  const toggleShortlist = (reportId: string) => {
-    if (isInShortlist(reportId)) {
-      removeFromShortlist(reportId);
-    } else {
-      addToShortlist(reportId);
-    }
   };
 
   return (
@@ -456,208 +231,24 @@ export default function ReportsPage() {
                   Verified reports only
                 </Label>
               </div>
-
-              {/* Saved Searches */}
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Saved Searches</Label>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Save className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Save Search</DialogTitle>
-                        <DialogDescription>
-                          Save your current filter settings for quick access later.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label>Search Name</Label>
-                          <Input placeholder="e.g., High Score CA Borrowers" />
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit">Save Search</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-                <div className="space-y-1">
-                  {savedSearches.map((search) => (
-                    <div
-                      key={search.id}
-                      className="flex items-center justify-between p-2 rounded hover:bg-muted cursor-pointer"
-                    >
-                      <span className="text-sm">{search.name}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {search.count}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </CardContent>
           </Card>
         )}
 
         {/* Results */}
         <div className="flex-1 space-y-4">
-          {/* Results Header */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">
-              Showing {paginatedReports.length} of {sortedReports.length} reports
-            </p>
-            <div className="flex items-center gap-2">
-              <Label className="text-sm">Sort by:</Label>
-              <Select value={sortField} onValueChange={setSortField}>
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="score">Score</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="sources">Sources</SelectItem>
-                  <SelectItem value="yearsActive">Experience</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-                }
-              >
-                {sortDirection === 'desc' ? '↓' : '↑'}
-              </Button>
-            </div>
-          </div>
-
-          {/* Results Table */}
+          {/* Empty State */}
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th className="w-10"></th>
-                      <th>Borrower ID</th>
-                      <th
-                        className="cursor-pointer hover:text-foreground"
-                        onClick={() => handleSort('score')}
-                      >
-                        Score {sortField === 'score' && (sortDirection === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th
-                        className="cursor-pointer hover:text-foreground"
-                        onClick={() => handleSort('income')}
-                      >
-                        Annual Income{' '}
-                        {sortField === 'income' && (sortDirection === 'desc' ? '↓' : '↑')}
-                      </th>
-                      <th>Primary Source</th>
-                      <th>Loan Type</th>
-                      <th>State</th>
-                      <th>Trend</th>
-                      <th>Status</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedReports.map((report) => (
-                      <tr
-                        key={report.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => router.push(`/dashboard/reports/${report.id}`)}
-                      >
-                        <td onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => toggleShortlist(report.id)}
-                          >
-                            {isInShortlist(report.id) ? (
-                              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                            ) : (
-                              <StarOff className="h-4 w-4 text-muted-foreground" />
-                            )}
-                          </Button>
-                        </td>
-                        <td className="font-mono text-sm">
-                          {anonymizeBorrowerId(report.id)}
-                        </td>
-                        <td>
-                          <ScoreBadge score={report.score} />
-                        </td>
-                        <td className="font-mono">{formatCurrency(report.income)}</td>
-                        <td>{report.primarySource}</td>
-                        <td className="capitalize">{report.loanType}</td>
-                        <td>{report.state}</td>
-                        <td>
-                          <Badge
-                            variant={
-                              report.trend === 'growing'
-                                ? 'success'
-                                : report.trend === 'declining'
-                                ? 'error'
-                                : 'secondary'
-                            }
-                          >
-                            {report.trend}
-                          </Badge>
-                        </td>
-                        <td>
-                          {report.verified ? (
-                            <Badge variant="success">Verified</Badge>
-                          ) : (
-                            <Badge variant="warning">Pending</Badge>
-                          )}
-                        </td>
-                        <td>
-                          <Button variant="ghost" size="sm">
-                            View
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Inbox className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-lg font-medium text-foreground mb-1">No borrower reports yet</p>
+                <p className="text-muted-foreground max-w-md">
+                  Borrower income packages will appear here when they are shared with you. Set your lending criteria to receive matched reports.
+                </p>
               </div>
             </CardContent>
           </Card>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          )}
 
           {/* Shortlist Summary */}
           {shortlist.length > 0 && (

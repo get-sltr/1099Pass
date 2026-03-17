@@ -1,3 +1,4 @@
+import { use } from 'react';
 import { ReportDetailClient } from './ReportDetailClient';
 
 /** Required for static export (S3): pre-render at least one path for this dynamic route */
@@ -8,7 +9,8 @@ export function generateStaticParams() {
 export default function ReportDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  return <ReportDetailClient reportId={params.id} />;
+  const { id } = use(params);
+  return <ReportDetailClient reportId={id} />;
 }

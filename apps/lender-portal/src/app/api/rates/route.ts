@@ -4,6 +4,8 @@
  * Always request file_type=json to avoid XML parsing.
  */
 
+export const dynamic = 'force-static';
+
 const FRED_BASE = 'https://api.stlouisfed.org/fred/series/observations';
 
 /** Per FRED terms: credit the source. */

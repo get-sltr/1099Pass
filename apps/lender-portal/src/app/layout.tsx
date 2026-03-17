@@ -15,8 +15,42 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: '1099Pass Lender Portal',
-  description: 'Access verified borrower income reports for gig workers and 1099 contractors',
+  title: {
+    default: '1099Pass — The Operating System for 1099 Income',
+    template: '%s | 1099Pass',
+  },
+  description: 'AI-powered income verification for self-employed borrowers. Document packages, pipeline tracking, and loan readiness reports for lending, auto, and real estate professionals.',
+  metadataBase: new URL('https://1099pass.com'),
+  keywords: [
+    '1099 income verification',
+    'self-employed mortgage',
+    'gig worker loans',
+    'non-QM lending',
+    'income verification platform',
+    'bank statement loans',
+    '1099 contractor mortgage',
+    'freelancer income verification',
+    'AI underwriting',
+  ],
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://1099pass.com',
+    siteName: '1099Pass',
+    title: '1099Pass — The Operating System for 1099 Income',
+    description: 'AI-powered income verification for self-employed borrowers. Document packages, pipeline tracking, and loan readiness reports.',
+    images: [{ url: '/logo.svg', width: 512, height: 512, alt: '1099Pass' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: '1099Pass — The Operating System for 1099 Income',
+    description: 'AI-powered income verification for self-employed borrowers.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-snippet': -1, 'max-image-preview': 'large' },
+  },
   icons: {
     icon: '/favicon.ico',
   },

@@ -13,17 +13,38 @@
 - **Path:** Handler entry points are under `packages/api/src/handlers/` (path from infra: `../../..` = repo root when running from `infrastructure/lib/stacks`).
 - **Note:** If you see "CDK CLI is not compatible with the CDK library", upgrade the CLI: `npm i -g aws-cdk@latest` (or use the version required by the message).
 
-### ⏳ Borrower app → API → Plaid Link E2E
-- App has `EXPO_PUBLIC_USE_REAL_API` and API client; Plaid Link flow and connect/sync handlers exist. Full E2E still needs: real Cognito login in the app, Plaid Link token from API, connect/callback/sync wired and tested with a real Plaid account.
+### ✅ Database persistence (DONE)
+- Created `plaid_items` table (migration 014) for storing linked Plaid accounts with RLS
+- Created repositories: `plaid-item-repository.ts`, `financial-profile-repository.ts`, `document-repository.ts`
+- Added `getIdByCognitoSub()` to borrower repository for Cognito sub → DB ID resolution
+- Wired all handlers to use real DB: `callback.ts`, `sync.ts`, `get-profile.ts`, `get-score.ts`, `get-breakdown.ts`, `generate.ts`
+- All handlers now store/retrieve linked accounts, income profiles, documentation status from PostgreSQL
+- 13 new repository tests, all 144 tests pass
+
+### ✅ Real authentication (DONE)
+- Created `auth/refresh.ts` handler (Cognito REFRESH_TOKEN_AUTH)
+- Created `auth/forgot-password.ts` handler (Cognito ForgotPassword + ConfirmForgotPassword, rate limited)
+- Rewrote `auth/register.ts` to handle full signup: Cognito SignUp → auto-confirm → create DB borrower → authenticate → return tokens
+- Fixed borrower app auth store: login uses `accessToken` from backend, fetches real profile via `/borrower/profile`
+- Fixed borrower app signUp to match new register response format
+- Wired forgot-password screen to real API (no more TODOs)
+- Created lender portal API client (`lib/api.ts`)
+- Wired lender portal auth store to real Cognito via `/auth/login`
+- Wired lender portal login page to use `loginWithCredentials`
+
+### ✅ App-to-API wiring (DONE)
+- **New backend handlers:** `documents/list.ts`, `borrower/update-profile.ts`, `lenders/list.ts`
+- **Borrower app stores fixed:** Profile store routes → `/borrower/profile`, `/financial/profile`, `/financial/sync`; Report store maps backend response format; financial data routes corrected
+- **Borrower app screens fixed:** Dashboard fetches loan score from `/scoring/current`; Profile save calls real API; Settings delete account calls real API
+- **Lender portal stores fixed:** Reports store has `fetchReports()` calling `/reports`; Criteria store calls `/criteria/matching-count`
+- All store API paths now match actual backend endpoints
+- Stores still support `USE_MOCKS` for development but production paths are fully wired
+
+### ⏳ Borrower app → Plaid Link E2E
+- Handlers are fully wired to DB. Remaining: integrate Plaid Link SDK in mobile app's connect-accounts screen (currently simulates with delay).
 
 ### ⏳ Report generation → S3 → PDF download
-- Generate handler writes report JSON + PDF to S3; list handler returns report IDs; get-report and get-pdf handlers exist. Remaining: ensure GET /reports/:id and GET /reports/:id/pdf (or similar) are routed in API Gateway and app uses them for download.
-
-### ⏳ Lender portal → API → report viewing
-- Lender portal still uses mock data. Needs: `NEXT_PUBLIC_API_URL`, Cognito auth, and report list/detail API calls instead of mocks.
-
-### ⏳ Repositories
-- Borrower repository exists. Other repos (report, lender, match, message, subscription, etc.) may need to be verified/implemented per spec.
+- Generate handler writes report JSON + PDF to S3 with real borrower data. Remaining: ensure API Gateway routes are configured for GET /reports/:id and GET /reports/:id/pdf.
 
 ### ⏳ Square (lender subscriptions)
 - Not implemented in this session. Backend routes and Square webhooks need to be added.

@@ -433,6 +433,11 @@ export const useMessagingStore = create<MessagingState>((set, get) => ({
   },
 
   connect: () => {
+    if (USE_MOCKS) {
+      set({ connectionStatus: 'connected' });
+      return;
+    }
+
     const { ws, reconnectAttempts } = get();
 
     if (ws?.readyState === WebSocket.OPEN) {

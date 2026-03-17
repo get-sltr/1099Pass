@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { api } from '../lib/api';
 
 export interface LendingCriteria {
   // Score requirements
@@ -116,21 +117,9 @@ export const useCriteriaStore = create<CriteriaState>()(
         set({ isLoading: true });
 
         try {
-          // TODO: Replace with actual API call
-          // Simulate API delay
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          // Mock count based on criteria strictness
           const { criteria } = get();
-          let count = 1000;
-
-          if (criteria.minScore > 70) count -= 400;
-          if (criteria.minIncome > 50000) count -= 300;
-          if (criteria.targetStates.length > 0 && criteria.targetStates.length < 10) {
-            count -= 200;
-          }
-
-          set({ matchingCount: Math.max(count, 50), isLoading: false });
+          const data = await api.post<{ count: number }>('/criteria/matching-count', criteria);
+          set({ matchingCount: data.count ?? 0, isLoading: false });
         } catch (error) {
           set({ isLoading: false });
           throw error;

@@ -68,10 +68,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'Messages',
-          tabBarIcon: ({ focused }) => (
-            <TabIcon name={focused ? 'chatbubbles' : 'chatbubbles-outline'} focused={focused} />
-          ),
+          href: null, // Hidden (accessed from settings or dashboard)
         }}
       />
       <Tabs.Screen
@@ -80,6 +77,15 @@ export default function TabsLayout() {
           title: 'Settings',
           tabBarIcon: ({ focused }) => (
             <TabIcon name={focused ? 'settings' : 'settings-outline'} focused={focused} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="rates"
+        options={{
+          title: 'Rates',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon name={focused ? 'trending-up' : 'trending-up-outline'} focused={focused} />
           ),
         }}
       />

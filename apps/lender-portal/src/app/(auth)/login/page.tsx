@@ -12,7 +12,7 @@ import { useAuthStore } from '@/store';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuthStore();
+  const { loginWithCredentials } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,32 +23,19 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!email || !password) {
+      setError('Please enter your email and password');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mock login - in production this would call the backend
-      if (email && password) {
-        login(
-          {
-            id: 'e418a4a8-6061-708f-eebd-8e99eb78a85e',
-            email,
-            firstName: 'Kevin',
-            lastName: 'Minn',
-            role: 'admin',
-            institutionId: 'sltr-digital-001',
-            institutionName: 'SLTR Digital LLC',
-          },
-          'mock-jwt-token'
-        );
-        router.push('/dashboard');
-      } else {
-        setError('Please enter your email and password');
-      }
-    } catch (err) {
-      setError('Invalid email or password');
+      await loginWithCredentials(email, password);
+      router.push('/dashboard');
+    } catch (err: any) {
+      setError(err?.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }

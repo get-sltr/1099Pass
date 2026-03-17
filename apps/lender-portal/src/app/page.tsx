@@ -15,21 +15,21 @@ import {
 const roles = [
   {
     icon: Landmark,
-    title: 'Loan Officers and Mortgage Lenders',
+    title: 'Mortgage & Loan Professionals',
     description:
-      'Access pre-verified borrower income packages, non-QM rate tracking, and document review tools built for non-traditional income.',
+      'Receive pre-verified 1099 income packages, track non-QM rates in real time, and review AI-organized documents — all in one dashboard.',
   },
   {
     icon: Home,
-    title: 'Real Estate Agents and Brokers',
+    title: 'Real Estate Professionals',
     description:
-      'Help your gig worker clients get mortgage-ready. Track leads through the buyer journey with education and preparation tools.',
+      'Get your self-employed buyers mortgage-ready faster. AI-powered income verification eliminates the back-and-forth on missing documents.',
   },
   {
     icon: Car,
-    title: 'Auto Finance and Car Sales Professionals',
+    title: 'Auto Finance Professionals',
     description:
-      'Receive organized income verification packages from non-W2 buyers. Streamline approvals for self-employed car buyers.',
+      'Approve non-W2 car buyers with confidence. Receive organized, AI-verified income packages and cut approval time in half.',
   },
 ];
 
@@ -41,7 +41,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 border-b border-white/10" style={{ backgroundColor: 'rgba(10, 22, 40, 0.95)', backdropFilter: 'blur(12px)' }}>
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Building2 className="h-8 w-8" style={{ color: '#C4652A' }} />
+            <Building2 className="h-8 w-8" style={{ color: '#FF6B00' }} />
             <span className="text-2xl font-bold text-white" style={{ fontFamily: 'Georgia, serif' }}>1099Pass</span>
           </Link>
           {/* Desktop nav */}
@@ -68,7 +68,7 @@ export default function LandingPage() {
               <Link
                 href="/register"
                 className="text-white px-5 py-2.5 rounded-lg hover:opacity-90 transition font-medium"
-                style={{ backgroundColor: '#C4652A' }}
+                style={{ backgroundColor: '#FF6B00' }}
               >
                 Create Account
               </Link>
@@ -82,7 +82,7 @@ export default function LandingPage() {
               <Link href="/blog" className="py-2 text-white/70 hover:text-white font-medium" onClick={() => setMobileMenuOpen(false)}>Blog</Link>
               <div className="border-t border-white/10 pt-4 mt-2 flex gap-4">
                 <Link href="/login" className="text-white font-medium" onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
-                <Link href="/register" className="text-white px-4 py-2 rounded-lg font-medium" style={{ backgroundColor: '#C4652A' }} onClick={() => setMobileMenuOpen(false)}>Create Account</Link>
+                <Link href="/register" className="text-white px-4 py-2 rounded-lg font-medium" style={{ backgroundColor: '#FF6B00' }} onClick={() => setMobileMenuOpen(false)}>Create Account</Link>
               </div>
             </div>
           </div>
@@ -94,18 +94,18 @@ export default function LandingPage() {
         <div className="container mx-auto px-6">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-4xl md:text-6xl font-bold text-white mb-6 leading-tight" style={{ fontFamily: 'Georgia, serif' }}>
-              The professional platform for{' '}
-              <span style={{ color: '#C4652A' }}>non-W2 lending</span>
+              The operating system for{' '}
+              <span style={{ color: '#FF6B00' }}>1099 income</span>
             </h1>
             <p className="text-xl text-white/60 mb-12 max-w-2xl mx-auto leading-relaxed">
-              Receive pre-organized borrower document packages.
-              Track your pipeline. Stay current on rates and loan products.
+              Document packages, pipeline tracking, and AI-powered verification
+              for lending, auto, and real estate professionals.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
                 href="/register"
                 className="inline-flex items-center justify-center text-white text-lg px-8 py-4 rounded-lg hover:opacity-90 transition font-medium"
-                style={{ backgroundColor: '#C4652A' }}
+                style={{ backgroundColor: '#FF6B00' }}
               >
                 Create Account
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -135,9 +135,9 @@ export default function LandingPage() {
                 >
                   <div
                     className="h-12 w-12 rounded-lg flex items-center justify-center mb-5"
-                    style={{ backgroundColor: 'rgba(196, 101, 42, 0.15)' }}
+                    style={{ backgroundColor: 'rgba(255, 107, 0, 0.15)' }}
                   >
-                    <Icon className="h-6 w-6" style={{ color: '#C4652A' }} />
+                    <Icon className="h-6 w-6" style={{ color: '#FF6B00' }} />
                   </div>
                   <h3 className="text-xl font-semibold text-white mb-3" style={{ fontFamily: 'Georgia, serif' }}>
                     {role.title}
@@ -155,7 +155,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <Building2 className="h-6 w-6" style={{ color: '#C4652A' }} />
+              <Building2 className="h-6 w-6" style={{ color: '#FF6B00' }} />
               <span className="text-xl font-bold text-white" style={{ fontFamily: 'Georgia, serif' }}>1099Pass</span>
             </div>
             <div className="flex gap-6">

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { api } from '../lib/api';
 
 export type UserRole = 'admin' | 'loan_officer' | 'underwriter';
 
@@ -17,6 +18,7 @@ export interface User {
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 
@@ -33,6 +35,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isLoading: true,
 
@@ -45,27 +48,34 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      loginWithCredentials: async (email: string, _password: string) => {
+      loginWithCredentials: async (email: string, password: string) => {
         set({ isLoading: true });
 
         try {
-          // TODO: Replace with actual API call
-          // For development, mock successful login
-          const mockUser: User = {
-            id: 'e418a4a8-6061-708f-eebd-8e99eb78a85e',
+          // Authenticate via Cognito through the backend
+          const authResponse = await api.post<{
+            idToken: string;
+            accessToken: string;
+            refreshToken?: string;
+            expiresIn: number;
+          }>('/auth/login', { email, password, clientType: 'LENDER' });
+
+          // For now, build user from token claims
+          // In a future iteration, fetch lender profile from /lender/profile
+          const user: User = {
+            id: email,
             email,
-            firstName: 'Kevin',
-            lastName: 'Minn',
+            firstName: email.split('@')[0] || 'User',
+            lastName: '',
             role: 'admin',
-            institutionId: 'sltr-digital-001',
-            institutionName: 'SLTR Digital LLC',
+            institutionId: '',
+            institutionName: '',
           };
 
-          const mockToken = 'mock-jwt-token-' + Date.now();
-
           set({
-            user: mockUser,
-            token: mockToken,
+            user,
+            token: authResponse.accessToken,
+            refreshToken: authResponse.refreshToken ?? null,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -76,11 +86,26 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        // Best-effort server-side revocation
+        const state = useAuthStore.getState();
+        if (state.token) {
+          api.post('/auth/logout', {
+            refreshToken: state.refreshToken,
+            clientType: 'LENDER',
+          }).catch(() => {});
+        }
+
         set({
           user: null,
           token: null,
+          refreshToken: null,
           isAuthenticated: false,
         });
+
+        // Ensure localStorage is fully cleared (zustand persist can be laggy)
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('lender-auth');
+        }
       },
 
       setUser: (user: User) => {
@@ -96,6 +121,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         token: state.token,
+        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     }

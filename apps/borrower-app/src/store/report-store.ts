@@ -157,7 +157,21 @@ export const useReportStore = create<ReportState>((set, get) => ({
         return;
       }
 
-      const reports = await api.get<Report[]>('/reports');
+      const apiReports = await api.get<any[]>('/reports');
+      // Map backend report format to app Report format
+      const reports: Report[] = (apiReports ?? []).map((r: any) => ({
+        id: r.reportId ?? r.id,
+        period: '12months' as ReportPeriod,
+        status: (r.status ?? 'active').toLowerCase() as ReportStatus,
+        accessCount: r.accessCount ?? 0,
+        incomeData: {
+          totalIncome: r.summary?.projectedAnnualIncome ?? 0,
+          monthlyAverage: (r.summary?.projectedAnnualIncome ?? 0) / 12,
+          incomeSources: [],
+        },
+        createdAt: r.generatedAt ?? r.createdAt ?? new Date().toISOString(),
+        expiresAt: r.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      }));
       set({ reports, isLoading: false });
 
       // Update cache
@@ -233,7 +247,25 @@ export const useReportStore = create<ReportState>((set, get) => ({
         return newReport;
       }
 
-      const report = await api.post<Report>('/reports/generate', options);
+      const apiReport = await api.post<any>('/reports/generate', {
+        targetLoanType: options.period === '12months' ? 'MORTGAGE' : undefined,
+      });
+
+      const report: Report = {
+        id: apiReport.reportId,
+        period: options.period,
+        status: 'active',
+        recipient: options.recipient,
+        recipientEmail: options.recipientEmail,
+        accessCount: 0,
+        incomeData: {
+          totalIncome: apiReport.summary?.projectedAnnualIncome ?? 0,
+          monthlyAverage: (apiReport.summary?.projectedAnnualIncome ?? 0) / 12,
+          incomeSources: [],
+        },
+        createdAt: apiReport.generatedAt ?? new Date().toISOString(),
+        expiresAt: apiReport.expiresAt ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      };
 
       set((state) => ({
         reports: [report, ...state.reports],
@@ -303,7 +335,8 @@ export const useReportStore = create<ReportState>((set, get) => ({
         return `https://1099pass.com/reports/${reportId}/download.pdf`;
       }
 
-      const { downloadUrl } = await api.get<{ downloadUrl: string }>(`/reports/${reportId}/download`);
+      // PDF download endpoint
+      const { downloadUrl } = await api.get<{ downloadUrl: string }>(`/reports/${reportId}/pdf`);
       return downloadUrl;
     } catch (error) {
       console.error('Failed to download report:', error);

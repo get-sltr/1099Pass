@@ -11,12 +11,15 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { create, open, dismissLink, LinkSuccess, LinkExit } from 'react-native-plaid-link-sdk';
 import { Button, Card, Badge, useToast } from '../../src/components/ui';
 import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
+import { api } from '../../src/services/api';
 
 type AccountStatus = 'connected' | 'pending' | 'error' | 'not_connected';
 
@@ -47,89 +50,141 @@ export default function ConnectAccountsScreen() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const openPlaidLink = useCallback(() => {
+    const onSuccess = async (success: LinkSuccess) => {
+      try {
+        // Exchange public token via backend
+        const result = await api.post<{
+          accountId: string;
+          institutionId: string;
+          institutionName: string;
+          accountCount: number;
+          status: string;
+        }>('/financial/callback', {
+          publicToken: success.publicToken,
+          institutionId: success.metadata?.institution?.id,
+          institutionName: success.metadata?.institution?.name,
+        });
+
+        const newAccount: ConnectedAccount = {
+          id: result.accountId,
+          name: result.institutionName || 'Bank Account',
+          type: 'bank',
+          icon: 'card-outline',
+          status: 'connected',
+          lastSync: 'Just now',
+        };
+
+        setConnectedAccounts((prev) => [...prev, newAccount]);
+
+        showToast({
+          type: 'success',
+          title: 'Bank connected!',
+          message: `${result.institutionName} linked with ${result.accountCount} account(s)`,
+        });
+
+        // Trigger income sync in the background
+        api.post('/financial/sync', {}).catch(() => {});
+      } catch (error) {
+        showToast({
+          type: 'error',
+          title: 'Connection failed',
+          message: 'Bank linked but we couldn\'t save it. Please try again.',
+        });
+      } finally {
+        setIsConnecting(false);
+      }
+    };
+
+    const onExit = (exit: LinkExit) => {
+      setIsConnecting(false);
+      if (exit.error) {
+        showToast({
+          type: 'error',
+          title: 'Connection cancelled',
+          message: exit.error.displayMessage || 'Plaid Link was closed',
+        });
+      }
+    };
+
+    open({ onSuccess, onExit });
+  }, [showToast]);
+
   const handleConnectBank = async () => {
     setIsConnecting(true);
 
     try {
-      // TODO: Initialize Plaid Link
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Get link token from backend
+      const { linkToken } = await api.post<{ linkToken: string; expiration: string }>(
+        '/financial/connect',
+        {}
+      );
 
-      // Mock connected bank
-      const newAccount: ConnectedAccount = {
-        id: `bank_${Date.now()}`,
-        name: 'Chase Checking ••••4521',
-        type: 'bank',
-        icon: 'card-outline',
-        status: 'connected',
-        lastSync: 'Just now',
-      };
-
-      setConnectedAccounts((prev) => [...prev, newAccount]);
-
-      showToast({
-        type: 'success',
-        title: 'Bank connected!',
-        message: 'Your bank account has been linked successfully',
-      });
+      // Create and open Plaid Link
+      create({ token: linkToken });
+      openPlaidLink();
     } catch (error) {
+      setIsConnecting(false);
       showToast({
         type: 'error',
         title: 'Connection failed',
-        message: 'Unable to connect your bank. Please try again.',
+        message: 'Unable to start bank connection. Please try again.',
       });
-    } finally {
-      setIsConnecting(false);
     }
   };
 
-  const handleConnectPlatform = async (platform: typeof SUGGESTED_PLATFORMS[0]) => {
-    setIsConnecting(true);
+  const handleConnectPlatform = async (_platform: typeof SUGGESTED_PLATFORMS[0]) => {
+    // Gig platform income is identified through bank deposits.
+    // Connecting a bank account where gig deposits land is all that's needed —
+    // the income normalization engine classifies the sources automatically.
+    handleConnectBank();
+  };
 
+  const handleRemoveAccount = async (accountId: string) => {
     try {
-      // TODO: Initialize platform OAuth
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const newAccount: ConnectedAccount = {
-        id: platform.id,
-        name: platform.name,
-        type: 'gig_platform',
-        icon: platform.icon,
-        status: 'connected',
-        lastSync: 'Just now',
-      };
-
-      setConnectedAccounts((prev) => [...prev, newAccount]);
-
+      await api.delete(`/financial/accounts/${accountId}`);
+      setConnectedAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
       showToast({
-        type: 'success',
-        title: `${platform.name} connected!`,
-        message: 'We\'re now syncing your earnings data',
+        type: 'info',
+        title: 'Account removed',
+        message: 'The account has been disconnected',
       });
     } catch (error) {
       showToast({
         type: 'error',
-        title: 'Connection failed',
-        message: `Unable to connect ${platform.name}. Please try again.`,
+        title: 'Error',
+        message: 'Failed to remove account. Please try again.',
       });
-    } finally {
-      setIsConnecting(false);
     }
-  };
-
-  const handleRemoveAccount = (accountId: string) => {
-    setConnectedAccounts((prev) => prev.filter((acc) => acc.id !== accountId));
-    showToast({
-      type: 'info',
-      title: 'Account removed',
-      message: 'The account has been disconnected',
-    });
   };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // TODO: Refresh account sync status
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setRefreshing(false);
+    try {
+      const accounts = await api.get<Array<{
+        id: string;
+        institutionName: string;
+        status: string;
+        lastSyncedAt: string | null;
+      }>>('/financial/accounts');
+
+      setConnectedAccounts(
+        (accounts ?? []).map((acc) => ({
+          id: acc.id,
+          name: acc.institutionName,
+          type: 'bank' as const,
+          icon: 'card-outline' as const,
+          status: acc.status === 'active' ? 'connected' as const : 'error' as const,
+          lastSync: acc.lastSyncedAt
+            ? new Date(acc.lastSyncedAt).toLocaleDateString()
+            : undefined,
+        }))
+      );
+    } catch {
+      // Silently fail on refresh
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   const getStatusBadge = (status: AccountStatus) => {
@@ -242,7 +297,7 @@ export default function ConnectAccountsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Gig Platforms</Text>
         <Text style={styles.sectionSubtitle}>
-          Connect your earning platforms to import income automatically
+          Connect the bank where your gig deposits land — we'll identify the sources automatically
         </Text>
 
         <View style={styles.platformGrid}>

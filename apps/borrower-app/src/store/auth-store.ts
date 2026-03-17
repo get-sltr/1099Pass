@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import type { Borrower } from '@1099pass/shared';
 import { SubscriptionTier, KYCStatus } from '@1099pass/shared';
-import { api } from '../services/api';
+import { api, setAuthInvalidatedCallback } from '../services/api';
 import { USE_MOCKS } from '../config';
 
 // Extended Borrower type for app-specific fields
@@ -106,18 +106,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      // Production API call
-      const response = await api.post<{
-        token: string;
+      // Authenticate with Cognito via backend
+      const authResponse = await api.post<{
+        idToken: string;
+        accessToken: string;
         refreshToken: string;
-        user: AppUser;
+        expiresIn: number;
       }>('/auth/login', { email, password });
 
-      const { token, refreshToken, user } = response;
+      const token = authResponse.accessToken;
+      const refreshToken = authResponse.refreshToken;
 
       // Store credentials securely
       await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, token);
-      await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      if (refreshToken) {
+        await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      }
+
+      // Fetch the borrower profile from the API
+      const profileResponse = await api.get<{ data: AppUser }>('/borrower/profile');
+      const user: AppUser = profileResponse.data ?? {
+        id: 'unknown',
+        email,
+        first_name: email.split('@')[0] || 'User',
+        last_name: '',
+        subscription_tier: SubscriptionTier.FREE,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
       await SecureStore.setItemAsync(STORAGE_KEYS.USER, JSON.stringify(user));
 
       set({
@@ -168,11 +185,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return;
       }
 
-      // Production API call
+      // Register via backend (creates Cognito user + DB record + returns tokens)
       const response = await api.post<{
-        token: string;
-        refreshToken: string;
+        idToken?: string;
+        accessToken?: string;
+        refreshToken?: string;
+        expiresIn?: number;
         user: AppUser;
+        message?: string;
       }>('/auth/register', {
         email: data.email,
         password: data.password,
@@ -181,17 +201,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         phone: data.phone,
       });
 
-      const { token, refreshToken, user } = response;
+      const user = response.user;
+      const token = response.accessToken;
+      const refreshToken = response.refreshToken;
 
-      await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, token);
-      await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      if (token) {
+        await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, token);
+      }
+      if (refreshToken) {
+        await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
+      }
       await SecureStore.setItemAsync(STORAGE_KEYS.USER, JSON.stringify(user));
+      await SecureStore.setItemAsync(STORAGE_KEYS.ONBOARDING_COMPLETE, 'false');
 
       set({
         user,
-        token,
-        refreshToken,
-        isAuthenticated: true,
+        token: token ?? null,
+        refreshToken: refreshToken ?? null,
+        isAuthenticated: !!token,
         hasCompletedOnboarding: false,
         isLoading: false,
       });
@@ -202,6 +229,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    const { token, refreshToken } = get();
+
+    // Revoke session server-side (best-effort — don't block local cleanup on failure)
+    if (token && !USE_MOCKS) {
+      try {
+        await api.post('/auth/logout', { refreshToken });
+      } catch {
+        // Server-side revocation failed — still proceed with local cleanup
+      }
+    }
+
     try {
       await SecureStore.deleteItemAsync(STORAGE_KEYS.AUTH_TOKEN);
       await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
@@ -266,13 +304,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
-      const response = await api.post<{ token: string; refreshToken: string }>(
-        '/auth/refresh',
-        { refreshToken }
-      );
+      const response = await api.post<{
+        token: string;
+        idToken: string;
+        refreshToken: string;
+        expiresIn: number;
+      }>('/auth/refresh', { refreshToken });
 
       await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, response.token);
-      await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
+      if (response.refreshToken) {
+        await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken);
+      }
 
       set({
         token: response.token,
@@ -323,5 +365,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: loading });
   },
 }));
+
+// Wire up the API interceptor so a failed token refresh syncs Zustand → triggers UI redirect
+setAuthInvalidatedCallback(() => {
+  useAuthStore.getState().logout();
+});
 
 export default useAuthStore;

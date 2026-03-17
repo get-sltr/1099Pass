@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card, Badge, Avatar } from '../../src/components/ui';
 import { useAuthStore, useProfileStore } from '../../src/store';
 import { USE_MOCKS } from '../../src/config';
+import { api } from '../../src/services/api';
 import { colors, spacing, textStyles, borderRadius, getScoreColor, getLetterGrade } from '../../src/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -204,17 +205,25 @@ function ActivityItemCard({ item }: { item: ActivityItem }) {
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
-  const { financialProfile, incomeSources, loadProfile } = useProfileStore();
+  const { financialProfile, incomeSources, loadProfile, loadFinancialProfile } = useProfileStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [loanScore, setLoanScore] = useState<number>(0);
 
   useEffect(() => {
     loadProfile();
-  }, [loadProfile]);
+    loadFinancialProfile();
+    // Fetch loan readiness score
+    if (!USE_MOCKS) {
+      api.get<any>('/scoring/current')
+        .then((data) => setLoanScore(data.score ?? 0))
+        .catch(() => {});
+    }
+  }, [loadProfile, loadFinancialProfile]);
 
-  // Use real data when available; in mock mode or before setup, show "no score yet"
-  const hasRealScore = !USE_MOCKS && financialProfile && financialProfile.loanReadinessScore > 0;
-  const score = hasRealScore ? financialProfile!.loanReadinessScore : 0;
-  const showEmptyScore = USE_MOCKS || !hasRealScore;
+  // Use real data when available
+  const score = loanScore > 0 ? loanScore : (financialProfile?.loanReadinessScore ?? 0);
+  const hasRealScore = score > 0;
+  const showEmptyScore = !hasRealScore;
 
   const monthlyIncome = financialProfile?.monthlyAverage ?? 0;
   const incomeChange = financialProfile?.incomeTrend === 'increasing' ? 12.5 : 0;

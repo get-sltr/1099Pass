@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Input, useToast } from '../../src/components/ui';
 import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
+import { api } from '../../src/services/api';
 
 type Step = 'email' | 'code' | 'password' | 'success';
 
@@ -47,8 +48,7 @@ export default function ForgotPasswordScreen() {
     setError('');
 
     try {
-      // TODO: Call API to send reset code
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await api.post('/auth/forgot-password', { email: email.trim().toLowerCase() });
 
       setStep('code');
       showToast({
@@ -73,9 +73,8 @@ export default function ForgotPasswordScreen() {
     setError('');
 
     try {
-      // TODO: Call API to verify code
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
+      // Code is verified along with password reset in the confirm step
+      // Just advance to password entry
       setStep('password');
     } catch (err) {
       setError('Invalid code. Please try again.');
@@ -98,8 +97,11 @@ export default function ForgotPasswordScreen() {
     setError('');
 
     try {
-      // TODO: Call API to reset password
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await api.post('/auth/forgot-password', {
+        email: email.trim().toLowerCase(),
+        code,
+        newPassword: password,
+      });
 
       setStep('success');
     } catch (err) {

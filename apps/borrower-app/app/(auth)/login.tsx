@@ -66,7 +66,13 @@ export default function LoginScreen() {
         message: 'Loading your income profile...',
       });
 
-      // Navigation is handled by the root index based on auth state
+      // Navigate based on onboarding state
+      const { hasCompletedOnboarding } = useAuthStore.getState();
+      if (hasCompletedOnboarding) {
+        router.replace('/(tabs)/dashboard');
+      } else {
+        router.replace('/(onboarding)/connect-accounts');
+      }
     } catch (error) {
       showToast({
         type: 'error',

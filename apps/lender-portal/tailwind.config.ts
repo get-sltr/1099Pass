@@ -25,24 +25,24 @@ const config: Config = {
           900: '#0F172A',
           950: '#020617',
         },
-        // Forest green accent (matching borrower app brand)
+        // Orange accent (1099Pass brand)
         accent: {
-          DEFAULT: '#1B4D3E',
-          50: '#E8F5F1',
-          100: '#D1EBE3',
-          200: '#A3D7C7',
-          300: '#75C3AB',
-          400: '#47AF8F',
-          500: '#1B4D3E',
-          600: '#163F33',
-          700: '#113128',
-          800: '#0C231D',
-          900: '#071512',
+          DEFAULT: '#FF6B00',
+          50: '#FFF5EC',
+          100: '#FFE6D0',
+          200: '#FFCDA1',
+          300: '#FFB372',
+          400: '#FF9A43',
+          500: '#FF6B00',
+          600: '#CC5600',
+          700: '#994000',
+          800: '#662B00',
+          900: '#331500',
         },
-        // Mint soft (borrower app brand color)
+        // Warm soft (brand accent background)
         mint: {
-          DEFAULT: '#A8E6CF',
-          soft: '#E8F8F0',
+          DEFAULT: '#FFE6D0',
+          soft: '#FFF5EC',
         },
         // Background colors
         background: '#F8FAFC',
@@ -51,7 +51,7 @@ const config: Config = {
         // Semantic colors
         border: '#E2E8F0',
         input: '#E2E8F0',
-        ring: '#1B4D3E',
+        ring: '#FF6B00',
         // Data colors
         positive: '#10B981',
         negative: '#EF4444',

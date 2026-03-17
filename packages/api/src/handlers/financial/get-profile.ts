@@ -9,11 +9,23 @@ import { incomeNormalizationService } from '../../services/income-normalization-
 import { withAuth, type AuthenticatedEvent } from '../../middleware/auth-middleware';
 import { auditLog } from '../../middleware/audit-logger';
 import { errorHandler } from '../../middleware/error-handler';
+import * as plaidItemRepo from '../../db/repositories/plaid-item-repository';
+import { getIdByCognitoSub } from '../../db/repositories/borrower-repository';
 
 async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult> {
   const { user, requestId } = event;
 
   try {
+    // Resolve borrower DB id
+    const borrowerId = await getIdByCognitoSub(user.sub);
+    if (!borrowerId) {
+      return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({ error: 'Borrower profile not found' }),
+      };
+    }
+
     // Initialize Plaid service
     const plaidService = createPlaidService(
       process.env.KMS_KEY_ID || '',
@@ -22,25 +34,31 @@ async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult
 
     await plaidService.initialize(process.env.PLAID_SECRET_ARN || '');
 
+    // Get linked accounts from database
+    const linkedAccounts = await plaidItemRepo.findByBorrowerId(borrowerId);
+    if (linkedAccounts.length === 0) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({ error: 'No linked bank accounts. Connect a bank account first.' }),
+      };
+    }
+
     // Calculate date range (24 months)
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 24);
 
-    // TODO: Get linked accounts from database and use real tokens
-    // For now, use mock data
-    const encryptedToken = 'mock-token';
-
-    // Fetch transactions
+    // Fetch transactions from the first linked account
     const transactions = await plaidService.fetchTransactions(
-      encryptedToken,
+      linkedAccounts[0]!.encrypted_access_token,
       startDate.toISOString().split('T')[0]!,
       endDate.toISOString().split('T')[0]!
     );
 
     // Normalize income
     const incomeProfile = incomeNormalizationService.normalizeIncome(
-      user.sub,
+      borrowerId,
       transactions,
       24
     );

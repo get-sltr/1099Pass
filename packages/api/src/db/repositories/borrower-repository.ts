@@ -120,3 +120,12 @@ export async function deleteById(id: string): Promise<void> {
   if (!existing) throw new NotFoundError('Borrower');
   await query('DELETE FROM borrowers WHERE id = $1', [id]);
 }
+
+/**
+ * Get the database borrower ID from a Cognito sub.
+ * Returns null if no borrower exists for this sub.
+ */
+export async function getIdByCognitoSub(cognitoSub: string): Promise<string | null> {
+  const result = await query<{ id: string }>('SELECT id FROM borrowers WHERE cognito_sub = $1', [cognitoSub]);
+  return result.rows[0]?.id ?? null;
+}

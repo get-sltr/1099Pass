@@ -7,13 +7,16 @@ import type { APIGatewayProxyResult } from 'aws-lambda';
 import { z } from 'zod';
 import { createPlaidService } from '../../services/plaid-service';
 import { incomeNormalizationService } from '../../services/income-normalization-service';
-import { loanScoreService, type DocumentationStatus } from '../../services/loan-score-service';
+import { loanScoreService } from '../../services/loan-score-service';
 import { createReportGeneratorService, type DocumentVerification } from '../../services/report-generator-service';
 import { generateIncomeNarrative } from '../../services/ai-report-narrator';
 import { validateRequest } from '../../middleware/request-validator';
 import { withAuth, type AuthenticatedEvent } from '../../middleware/auth-middleware';
 import { auditLog } from '../../middleware/audit-logger';
 import { errorHandler } from '../../middleware/error-handler';
+import * as plaidItemRepo from '../../db/repositories/plaid-item-repository';
+import { getDocumentationStatus } from '../../db/repositories/document-repository';
+import * as borrowerRepo from '../../db/repositories/borrower-repository';
 
 const RequestSchema = z.object({
   includeHistory: z.boolean().optional().default(true),
@@ -37,6 +40,25 @@ async function generateHandler(event: AuthenticatedEvent): Promise<APIGatewayPro
   const { targetLoanType, targetLoanAmount } = validation.data;
 
   try {
+    // Resolve borrower DB id and get borrower info
+    const borrowerId = await borrowerRepo.getIdByCognitoSub(user.sub);
+    if (!borrowerId) {
+      return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({ error: 'Borrower profile not found' }),
+      };
+    }
+
+    const borrower = await borrowerRepo.findById(borrowerId);
+    if (!borrower) {
+      return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({ error: 'Borrower profile not found' }),
+      };
+    }
+
     // Initialize services
     const plaidService = createPlaidService(
       process.env.KMS_KEY_ID || '',
@@ -49,32 +71,35 @@ async function generateHandler(event: AuthenticatedEvent): Promise<APIGatewayPro
       process.env.AWS_REGION
     );
 
+    // Get linked accounts from database
+    const linkedAccounts = await plaidItemRepo.findByBorrowerId(borrowerId);
+    if (linkedAccounts.length === 0) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({ error: 'No linked bank accounts. Connect a bank account first.' }),
+      };
+    }
+
     // Fetch and normalize income data
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 24);
 
     const transactions = await plaidService.fetchTransactions(
-      'mock-token',
+      linkedAccounts[0]!.encrypted_access_token,
       startDate.toISOString().split('T')[0]!,
       endDate.toISOString().split('T')[0]!
     );
 
     const incomeProfile = incomeNormalizationService.normalizeIncome(
-      user.sub,
+      borrowerId,
       transactions,
       24
     );
 
-    // TODO: Get actual documentation status from database
-    const documentationStatus: DocumentationStatus = {
-      hasTaxReturns: true,
-      has1099Forms: true,
-      hasBankStatements: true,
-      hasW2Forms: false,
-      hasOtherIncomeDocs: false,
-      linkedBankAccounts: 1,
-    };
+    // Get actual documentation status from database
+    const documentationStatus = await getDocumentationStatus(borrowerId);
 
     // Calculate loan readiness score
     const loanScore = loanScoreService.calculateScore(
@@ -116,14 +141,14 @@ async function generateHandler(event: AuthenticatedEvent): Promise<APIGatewayPro
       // Report still generated without narrative
     }
 
-    // Generate report
-    // TODO: Get actual borrower info from database
+    // Generate report with real borrower info
+    const borrowerName = `${borrower.first_name} ${borrower.last_name}`;
     const report = reportService.generateReport(
-      user.sub,
-      user.name || 'John Doe',
-      'Austin',
-      'TX',
-      new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
+      borrowerId,
+      borrowerName,
+      borrower.city || 'Unknown',
+      borrower.state || 'XX',
+      new Date(borrower.created_at),
       incomeProfile,
       loanScore,
       documentVerification,

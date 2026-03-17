@@ -7,6 +7,12 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, InternalAxiosRequ
 import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
 
+// Callback to notify auth store when tokens are force-cleared (e.g. refresh failure)
+let onAuthInvalidated: (() => void) | null = null;
+export function setAuthInvalidatedCallback(cb: () => void) {
+  onAuthInvalidated = cb;
+}
+
 // Storage keys
 const TOKEN_KEY = '1099pass_auth_token';
 const REFRESH_TOKEN_KEY = '1099pass_refresh_token';
@@ -227,6 +233,9 @@ class ApiService {
 
             await SecureStore.deleteItemAsync(TOKEN_KEY);
             await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+
+            // Sync Zustand auth state so UI redirects to login
+            onAuthInvalidated?.();
 
             return Promise.reject(refreshError);
           } finally {

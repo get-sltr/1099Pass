@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { api } from '../lib/api';
 
 export interface BorrowerReport {
   id: string;
@@ -41,6 +42,7 @@ interface ReportsState {
   pageSize: number;
 
   // Actions
+  fetchReports: () => Promise<void>;
   setFilters: (filters: Partial<ReportFilters>) => void;
   resetFilters: () => void;
   setSelectedReport: (id: string | null) => void;
@@ -74,6 +76,31 @@ export const useReportsStore = create<ReportsState>((set, get) => ({
   totalCount: 0,
   currentPage: 1,
   pageSize: 25,
+
+  fetchReports: async () => {
+    set({ isLoading: true });
+    try {
+      const data = await api.get<any[]>('/reports');
+      const reports: BorrowerReport[] = (data ?? []).map((r: any) => ({
+        id: r.reportId ?? r.id,
+        borrowerId: r.borrowerId ?? '',
+        score: r.summary?.loanReadinessScore ?? 0,
+        letterGrade: r.summary?.letterGrade ?? '--',
+        projectedAnnualIncome: r.summary?.projectedAnnualIncome ?? 0,
+        monthlyAverageIncome: (r.summary?.projectedAnnualIncome ?? 0) / 12,
+        sourceCount: r.summary?.activeSourceCount ?? 0,
+        primarySourceType: 'gig',
+        incomeTrend: (r.summary?.trajectory ?? 'stable').toLowerCase() as any,
+        incomeCV: 0,
+        reportDate: r.generatedAt ?? r.createdAt ?? new Date().toISOString(),
+        verificationStatus: 'verified' as const,
+      }));
+      set({ reports, totalCount: reports.length, isLoading: false });
+    } catch (error) {
+      console.error('Failed to fetch reports:', error);
+      set({ isLoading: false });
+    }
+  },
 
   setFilters: (newFilters) => {
     set((state) => ({

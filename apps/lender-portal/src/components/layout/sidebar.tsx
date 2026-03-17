@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   FileText,
@@ -40,6 +40,7 @@ const secondaryNavigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
   const { user, logout } = useAuthStore();
 
@@ -60,7 +61,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-primary-800 px-4">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: '#FF6B00' }}>
             <span className="text-sm font-bold text-white">1P</span>
           </div>
           {!sidebarCollapsed && (
@@ -138,7 +139,10 @@ export function Sidebar() {
 
         {/* Logout */}
         <button
-          onClick={logout}
+          onClick={() => {
+            logout();
+            router.push('/login');
+          }}
           className="sidebar-nav-item w-full text-left"
         >
           <LogOut className="h-5 w-5 shrink-0" />

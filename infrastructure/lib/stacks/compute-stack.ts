@@ -224,6 +224,49 @@ export class ComputeStack extends cdk.Stack {
     authResource.addResource('login').addMethod('POST', new apigateway.LambdaIntegration(loginFn));
     this.lambdaFunctions.push(loginFn);
 
+    const refreshFn = new lambdaNodejs.NodejsFunction(this, 'RefreshFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-auth-refresh`,
+      entry: path.join(apiHandlersRoot, 'auth', 'refresh.ts'),
+      handler: 'handler',
+      environment: {
+        ...commonEnv,
+        COGNITO_BORROWER_CLIENT_ID: props.cognitoBorrowerClientId,
+        COGNITO_LENDER_CLIENT_ID: props.cognitoLenderClientId,
+      },
+    });
+    authResource.addResource('refresh').addMethod('POST', new apigateway.LambdaIntegration(refreshFn));
+    this.lambdaFunctions.push(refreshFn);
+
+    const forgotPasswordFn = new lambdaNodejs.NodejsFunction(this, 'ForgotPasswordFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-auth-forgot-password`,
+      entry: path.join(apiHandlersRoot, 'auth', 'forgot-password.ts'),
+      handler: 'handler',
+      environment: {
+        ...commonEnv,
+        USER_POOL_ID: props.userPoolId,
+        COGNITO_BORROWER_CLIENT_ID: props.cognitoBorrowerClientId,
+        COGNITO_LENDER_CLIENT_ID: props.cognitoLenderClientId,
+      },
+    });
+    authResource.addResource('forgot-password').addMethod('POST', new apigateway.LambdaIntegration(forgotPasswordFn));
+    this.lambdaFunctions.push(forgotPasswordFn);
+
+    const logoutFn = new lambdaNodejs.NodejsFunction(this, 'LogoutFn', {
+      ...nodejsDefaults,
+      functionName: `pass1099-${props.environment}-auth-logout`,
+      entry: path.join(apiHandlersRoot, 'auth', 'logout.ts'),
+      handler: 'handler',
+      environment: {
+        ...commonEnv,
+        COGNITO_BORROWER_CLIENT_ID: props.cognitoBorrowerClientId,
+        COGNITO_LENDER_CLIENT_ID: props.cognitoLenderClientId,
+      },
+    });
+    authResource.addResource('logout').addMethod('POST', new apigateway.LambdaIntegration(logoutFn), methodOptions);
+    this.lambdaFunctions.push(logoutFn);
+
     // Borrower handlers
     const getProfileFn = new lambdaNodejs.NodejsFunction(this, 'GetProfileFn', {
       ...nodejsDefaults,
@@ -288,6 +331,9 @@ export class ComputeStack extends cdk.Stack {
       webhookFn,
       registerFn,
       loginFn,
+      refreshFn,
+      forgotPasswordFn,
+      logoutFn,
       getProfileFn,
       generateReportFn,
       listReportsFn,

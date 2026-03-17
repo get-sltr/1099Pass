@@ -10,6 +10,8 @@ import { validateRequest } from '../../middleware/request-validator';
 import { withAuth, type AuthenticatedEvent } from '../../middleware/auth-middleware';
 import { auditLog } from '../../middleware/audit-logger';
 import { errorHandler } from '../../middleware/error-handler';
+import * as plaidItemRepo from '../../db/repositories/plaid-item-repository';
+import { getIdByCognitoSub } from '../../db/repositories/borrower-repository';
 
 const RequestSchema = z.object({
   publicToken: z.string().min(1),
@@ -41,11 +43,31 @@ async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult
 
     await plaidService.initialize(process.env.PLAID_SECRET_ARN || '');
 
-    // Exchange public token for access token
-    const linkedAccount = await plaidService.exchangePublicToken(publicToken, user.sub);
+    // Resolve borrower DB id
+    const borrowerId = await getIdByCognitoSub(user.sub);
+    if (!borrowerId) {
+      return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({ error: 'Borrower profile not found' }),
+      };
+    }
 
-    // TODO: Store linkedAccount in database
-    // For now, we'll return the account info (minus the encrypted token)
+    // Exchange public token for access token
+    const linkedAccount = await plaidService.exchangePublicToken(publicToken, borrowerId);
+
+    // Store linked account in database
+    await plaidItemRepo.create({
+      id: linkedAccount.id,
+      borrower_id: borrowerId,
+      item_id: linkedAccount.itemId,
+      encrypted_access_token: linkedAccount.accessToken,
+      institution_id: linkedAccount.institutionId,
+      institution_name: linkedAccount.institutionName,
+      account_ids: linkedAccount.accountIds,
+      consent_expires_at: linkedAccount.consentExpiresAt,
+      status: linkedAccount.status,
+    });
 
     // Audit log
     await auditLog({

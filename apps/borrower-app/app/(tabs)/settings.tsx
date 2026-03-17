@@ -23,6 +23,7 @@ import { useTheme } from '../../src/contexts/ThemeContext';
 import { themeNames, type ThemeMode } from '../../src/theme/dualThemes';
 import { useSubscriptionStore } from '../../src/store/subscription-store';
 import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
+import { api } from '../../src/services/api';
 
 interface SettingItem {
   id: string;
@@ -259,11 +260,7 @@ export default function SettingsScreen() {
 
     setIsDeleting(true);
     try {
-      // TODO: Call API to delete account
-      // await api.delete('/user/account');
-
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await api.delete('/borrower/account');
 
       setShowDeleteModal(false);
       await logout();

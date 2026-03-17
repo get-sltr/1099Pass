@@ -6,15 +6,28 @@
 import type { APIGatewayProxyResult } from 'aws-lambda';
 import { createPlaidService } from '../../services/plaid-service';
 import { incomeNormalizationService } from '../../services/income-normalization-service';
-import { loanScoreService, type DocumentationStatus } from '../../services/loan-score-service';
+import { loanScoreService } from '../../services/loan-score-service';
 import { withAuth, type AuthenticatedEvent } from '../../middleware/auth-middleware';
 import { auditLog } from '../../middleware/audit-logger';
 import { errorHandler } from '../../middleware/error-handler';
+import * as plaidItemRepo from '../../db/repositories/plaid-item-repository';
+import { getDocumentationStatus } from '../../db/repositories/document-repository';
+import { getIdByCognitoSub } from '../../db/repositories/borrower-repository';
 
 async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult> {
   const { user, requestId } = event;
 
   try {
+    // Resolve borrower DB id
+    const borrowerId = await getIdByCognitoSub(user.sub);
+    if (!borrowerId) {
+      return {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({ error: 'Borrower profile not found' }),
+      };
+    }
+
     // Initialize Plaid service
     const plaidService = createPlaidService(
       process.env.KMS_KEY_ID || '',
@@ -22,32 +35,35 @@ async function handler(event: AuthenticatedEvent): Promise<APIGatewayProxyResult
     );
     await plaidService.initialize(process.env.PLAID_SECRET_ARN || '');
 
+    // Get linked accounts from database
+    const linkedAccounts = await plaidItemRepo.findByBorrowerId(borrowerId);
+    if (linkedAccounts.length === 0) {
+      return {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json', 'X-Request-Id': requestId },
+        body: JSON.stringify({ error: 'No linked bank accounts. Connect a bank account first.' }),
+      };
+    }
+
     // Fetch and normalize income
     const endDate = new Date();
     const startDate = new Date();
     startDate.setMonth(startDate.getMonth() - 24);
 
     const transactions = await plaidService.fetchTransactions(
-      'mock-token',
+      linkedAccounts[0]!.encrypted_access_token,
       startDate.toISOString().split('T')[0]!,
       endDate.toISOString().split('T')[0]!
     );
 
     const incomeProfile = incomeNormalizationService.normalizeIncome(
-      user.sub,
+      borrowerId,
       transactions,
       24
     );
 
-    // TODO: Get actual documentation status from database
-    const documentationStatus: DocumentationStatus = {
-      hasTaxReturns: true,
-      has1099Forms: true,
-      hasBankStatements: true,
-      hasW2Forms: false,
-      hasOtherIncomeDocs: false,
-      linkedBankAccounts: 1,
-    };
+    // Get actual documentation status from database
+    const documentationStatus = await getDocumentationStatus(borrowerId);
 
     // Calculate score
     const loanScore = loanScoreService.calculateScore(

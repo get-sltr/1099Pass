@@ -1,34 +1,34 @@
 /**
  * 1099Pass Brand Colors
- * Clean Modern Design System - Forest Green Theme
+ * Clean Modern Design System - Orange Brand Theme
  */
 
 export const colors = {
   // Primary Brand Colors
-  primary: '#1B4D3E', // Deep forest green - trust, stability, money
-  primaryLight: '#2A7A5F', // Lighter forest for hover states, active tabs
+  primary: '#FF6B00', // 1099Pass orange - bold, energetic, trustworthy
+  primaryLight: '#FF8C33', // Lighter orange for hover states, active tabs
 
   // Secondary Colors
   secondary: '#F5A623', // Warm amber - energy, optimism, gig economy hustle
 
   // Accent Colors
-  mint: '#A8E6CF', // Fresh mint - badges, highlights, success accents, progress indicators
-  mintSoft: '#E8F8F0', // Very light mint - subtle card backgrounds, section dividers
+  mint: '#FFE6D0', // Warm peach - badges, highlights, success accents, progress indicators
+  mintSoft: '#FFF5EC', // Very light warm - subtle card backgrounds, section dividers
   amberSoft: '#FFF4E0', // Warm glow - notification badges, warning backgrounds
 
   // Background & Surface
-  background: '#FAFDF8', // Warm off-white with green tint
+  background: '#FAF9F6', // Warm off-white
   surface: '#FFFFFF', // Pure white cards
 
   // Text Colors
-  textPrimary: '#1A2E26', // Green-black - all body text, headings
-  textSecondary: '#5C7A6E', // Green-gray - subtitles, timestamps, helper text
-  textTertiary: '#9CB4A8', // Light green-gray - placeholders, disabled, meta text
+  textPrimary: '#111111', // Near-black - all body text, headings
+  textSecondary: '#444444', // Medium gray - subtitles, timestamps, helper text
+  textTertiary: '#999999', // Light gray - placeholders, disabled, meta text
   textInverse: '#FFFFFF', // White text on dark backgrounds
 
   // Border
-  border: '#E2EDE7', // Green-tinted border
-  borderFocused: '#2A7A5F', // Focus state border
+  border: 'rgba(0, 0, 0, 0.06)', // Neutral border
+  borderFocused: '#FF6B00', // Focus state border
 
   // Status Colors
   success: '#10B981',
@@ -49,27 +49,27 @@ export const colors = {
   },
 
   // Shadows (color values for rgba)
-  shadowLight: 'rgba(27, 77, 62, 0.06)',
-  shadowMedium: 'rgba(27, 77, 62, 0.1)',
-  shadowDark: 'rgba(27, 77, 62, 0.15)',
+  shadowLight: 'rgba(0, 0, 0, 0.04)',
+  shadowMedium: 'rgba(0, 0, 0, 0.08)',
+  shadowDark: 'rgba(0, 0, 0, 0.12)',
 
   // Overlays
-  overlay: 'rgba(26, 46, 38, 0.5)',
-  overlayLight: 'rgba(26, 46, 38, 0.3)',
+  overlay: 'rgba(0, 0, 0, 0.5)',
+  overlayLight: 'rgba(0, 0, 0, 0.3)',
 
   // Input States
   inputBackground: '#FFFFFF',
-  inputBorder: '#E2EDE7',
-  inputBorderFocused: '#2A7A5F',
-  inputPlaceholder: '#9CB4A8',
+  inputBorder: 'rgba(0, 0, 0, 0.06)',
+  inputBorderFocused: '#FF6B00',
+  inputPlaceholder: '#999999',
 
   // Tab/Navigation
-  tabInactive: '#9CB4A8',
-  tabActive: '#1B4D3E',
+  tabInactive: '#999999',
+  tabActive: '#FF6B00',
 
   // Skeleton Loading
-  skeletonBase: '#E8F0EC',
-  skeletonHighlight: '#F5FAF8',
+  skeletonBase: 'rgba(0, 0, 0, 0.06)',
+  skeletonHighlight: 'rgba(0, 0, 0, 0.03)',
 } as const;
 
 export type ColorKey = keyof typeof colors;

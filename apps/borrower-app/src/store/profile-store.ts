@@ -162,7 +162,24 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         return;
       }
 
-      const profile = await api.get<BorrowerProfile>('/profile');
+      const response = await api.get<{ data: BorrowerProfile }>('/borrower/profile');
+      const profile: BorrowerProfile = {
+        id: response.data.id,
+        firstName: response.data.first_name ?? response.data.firstName ?? '',
+        lastName: response.data.last_name ?? response.data.lastName ?? '',
+        email: response.data.email,
+        phone: response.data.phone,
+        address: response.data.street_address ? {
+          street: response.data.street_address,
+          city: response.data.city ?? '',
+          state: response.data.state ?? '',
+          zip: response.data.zip_code ?? '',
+        } : undefined,
+        dateOfBirth: response.data.date_of_birth,
+        kyc_status: (response.data.kyc_status ?? 'pending').toLowerCase() as any,
+        createdAt: response.data.created_at ?? response.data.createdAt ?? '',
+        updatedAt: response.data.updated_at ?? response.data.updatedAt ?? '',
+      };
       set({ profile, isLoading: false });
 
       // Update cache
@@ -192,8 +209,12 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         return;
       }
 
-      const updated = await api.put<BorrowerProfile>('/profile', updates);
-      set({ profile: updated, isUpdating: false });
+      const response = await api.put<{ data: BorrowerProfile }>('/borrower/profile', updates);
+      const updated = response.data;
+      set((state) => ({
+        profile: state.profile ? { ...state.profile, ...updates, updatedAt: new Date().toISOString() } : null,
+        isUpdating: false,
+      }));
     } catch (error) {
       console.error('Failed to update profile:', error);
       set({
@@ -212,7 +233,16 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         return;
       }
 
-      const financialProfile = await api.get<FinancialProfile>('/profile/financial');
+      const apiProfile = await api.get<any>('/financial/profile');
+      const financialProfile: FinancialProfile = {
+        totalAnnualIncome: apiProfile.summary?.projectedAnnualIncome ?? 0,
+        monthlyAverage: apiProfile.summary?.averageMonthlyIncome ?? 0,
+        incomeTrend: (apiProfile.summary?.trajectory ?? 'stable').toLowerCase(),
+        incomeStability: apiProfile.stabilityMetrics?.overallStability ?? 0,
+        debtToIncomeRatio: apiProfile.debtAnalysis?.estimatedDTI ?? 0,
+        loanReadinessScore: 0, // Fetched separately via /scoring/current
+        lastCalculated: apiProfile.generatedAt ?? new Date().toISOString(),
+      };
       set({ financialProfile });
     } catch (error) {
       console.error('Failed to load financial profile:', error);
@@ -227,7 +257,18 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         return;
       }
 
-      const incomeSources = await api.get<IncomeSource[]>('/profile/income-sources');
+      // Income sources come from the financial profile API
+      const apiProfile = await api.get<any>('/financial/profile');
+      const incomeSources: IncomeSource[] = (apiProfile.incomeSources ?? []).map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        type: s.platformType?.includes('GIG') ? 'gig' : s.platformType?.includes('FREELANCE') ? 'freelance' : 'business',
+        platform: s.name?.toLowerCase(),
+        monthlyAverage: s.monthlyAverage ?? 0,
+        lastUpdated: new Date().toISOString(),
+        connected: s.verificationStatus === 'BANK_VERIFIED',
+        accountId: s.id,
+      }));
       set({ incomeSources });
     } catch (error) {
       console.error('Failed to load income sources:', error);
@@ -258,7 +299,9 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         return;
       }
 
-      await api.post('/profile/income-sources/connect', { platform });
+      // Connecting income sources is done via Plaid Link flow
+      // POST /financial/connect → returns link token → user completes Link → POST /financial/callback
+      await api.post('/financial/callback', { publicToken: platform });
       await get().loadIncomeSources();
       set({ isUpdating: false });
     } catch (error) {
@@ -286,7 +329,8 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         return;
       }
 
-      await api.delete(`/profile/income-sources/${sourceId}`);
+      // Disconnecting removes the plaid item
+      await api.delete(`/financial/accounts/${sourceId}`);
       await get().loadIncomeSources();
       set({ isUpdating: false });
     } catch (error) {
@@ -315,7 +359,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
         return;
       }
 
-      await api.post('/profile/income-sources/refresh');
+      await api.post('/financial/sync', {});
       await Promise.all([
         get().loadFinancialProfile(),
         get().loadIncomeSources(),

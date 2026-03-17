@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Input, Avatar, useToast } from '../../src/components/ui';
 import { useAuthStore } from '../../src/store';
+import { useProfileStore } from '../../src/store/profile-store';
 import { colors, spacing, textStyles, borderRadius } from '../../src/theme';
 
 export default function ProfileScreen() {
@@ -31,14 +32,27 @@ export default function ProfileScreen() {
     phone: user?.phone || '',
   });
 
-  const handleSave = () => {
-    // TODO: Save profile changes
-    showToast({
-      type: 'success',
-      title: 'Profile updated',
-      message: 'Your changes have been saved',
-    });
-    setIsEditing(false);
+  const { updateProfile } = useProfileStore();
+
+  const handleSave = async () => {
+    try {
+      await updateProfile({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+      } as any);
+      showToast({
+        type: 'success',
+        title: 'Profile updated',
+        message: 'Your changes have been saved',
+      });
+      setIsEditing(false);
+    } catch (error) {
+      showToast({
+        type: 'error',
+        title: 'Update failed',
+        message: 'Could not save profile changes',
+      });
+    }
   };
 
   return (

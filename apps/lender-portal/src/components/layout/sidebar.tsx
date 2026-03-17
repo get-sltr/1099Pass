@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -61,9 +62,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-primary-800 px-4">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: '#FF6B00' }}>
-            <span className="text-sm font-bold text-white">1P</span>
-          </div>
+          <Image src="/logo.svg" alt="1099Pass" width={32} height={32} />
           {!sidebarCollapsed && (
             <span className="text-lg font-semibold text-white">1099Pass</span>
           )}

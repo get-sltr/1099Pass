@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import Image from 'next/image';
 import {
-  Building2,
   Landmark,
   Home,
   Car,
@@ -41,7 +41,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 border-b border-white/10" style={{ backgroundColor: 'rgba(10, 22, 40, 0.95)', backdropFilter: 'blur(12px)' }}>
         <div className="container mx-auto px-6 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-2">
-            <Building2 className="h-8 w-8" style={{ color: '#FF6B00' }} />
+            <Image src="/logo.svg" alt="1099Pass" width={32} height={32} />
             <span className="text-2xl font-bold text-white" style={{ fontFamily: 'Georgia, serif' }}>1099Pass</span>
           </Link>
           {/* Desktop nav */}
@@ -155,7 +155,7 @@ export default function LandingPage() {
         <div className="container mx-auto px-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
             <div className="flex items-center gap-2">
-              <Building2 className="h-6 w-6" style={{ color: '#FF6B00' }} />
+              <Image src="/logo.svg" alt="1099Pass" width={24} height={24} />
               <span className="text-xl font-bold text-white" style={{ fontFamily: 'Georgia, serif' }}>1099Pass</span>
             </div>
             <div className="flex gap-6">

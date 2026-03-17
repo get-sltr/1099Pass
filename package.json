@@ -11,6 +11,7 @@
     "infrastructure"
   ],
   "scripts": {
+    "postinstall": "npm run build --workspace=@1099pass/shared --if-present",
     "start": "cd apps/borrower-app && npx expo start",
     "start:lender": "npm run dev --workspace=@1099pass/lender-portal",
     "build": "npm run build --workspaces --if-present",

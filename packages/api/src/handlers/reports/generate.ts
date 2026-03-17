@@ -192,6 +192,18 @@ async function generateHandler(event: AuthenticatedEvent): Promise<APIGatewayPro
         },
         qualifiedLoanTypes: loanScore.qualifiedLoanTypes,
         potentialLoanTypes: loanScore.potentialLoanTypes,
+        programMatches: loanScore.programMatches.map((m) => ({
+          program: m.program,
+          displayName: m.displayName,
+          eligible: m.eligible,
+          likelihood: m.likelihood,
+        })),
+        actionPlan: loanScore.actionPlan.slice(0, 3).map((a) => ({
+          priority: a.priority,
+          action: a.action,
+          impact: a.impact,
+          timeframe: a.timeframe,
+        })),
       }),
     };
   } catch (error) {

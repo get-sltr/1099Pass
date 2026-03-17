@@ -14,6 +14,41 @@ import type {
 export type LetterGrade = 'A+' | 'A' | 'B+' | 'B' | 'C+' | 'C' | 'D' | 'F';
 export type LoanType = 'MORTGAGE' | 'AUTO' | 'PERSONAL' | 'BUSINESS' | 'HELOC';
 
+/** Loan program types for program matching (from underwriting spec) */
+export type LoanProgram =
+  | 'CONVENTIONAL'
+  | 'FHA'
+  | 'NON_QM_BANK_STATEMENT'
+  | 'NON_QM_1099_ONLY'
+  | 'NON_QM_DSCR'
+  | 'NON_QM_ASSET_DEPLETION'
+  | 'NON_QM_PL'
+  | 'AUTO_STANDARD'
+  | 'AUTO_SUBPRIME';
+
+export interface LoanProgramMatch {
+  program: LoanProgram;
+  displayName: string;
+  eligible: boolean;
+  likelihood: 'HIGH' | 'MODERATE' | 'LOW' | 'INELIGIBLE';
+  estimatedRateRange: string;
+  minDownPayment: string;
+  minCreditScore: number;
+  maxDTI: number;
+  conditions: string[];
+  /** Specific actions to unlock this program */
+  unlockActions: string[];
+}
+
+export interface ActionPlanItem {
+  priority: number;
+  action: string;
+  impact: string;
+  category: string;
+  timeframe: string;
+  programsUnlocked: LoanProgram[];
+}
+
 export interface ScoreComponent {
   name: string;
   weight: number; // 0-1
@@ -48,6 +83,10 @@ export interface LoanReadinessScore {
   loanTypeThresholds: Record<LoanType, { recommended: number; minimum: number }>;
   qualifiedLoanTypes: LoanType[];
   potentialLoanTypes: LoanType[];
+  /** Loan program matching (from underwriting spec) */
+  programMatches: LoanProgramMatch[];
+  /** Prioritized action plan */
+  actionPlan: ActionPlanItem[];
   calculatedAt: Date;
 }
 
@@ -82,13 +121,15 @@ export interface DocumentationStatus {
  * Calculates and tracks loan readiness scores
  */
 export class LoanScoreService {
-  // Weight configuration for score components
+  // Weight configuration aligned with underwriting spec:
+  // Income stability & trend: 25%, DTI ratio: 20%, Credit (income level proxy): 20%,
+  // Documentation completeness: 15%, Assets (diversity proxy): 10%, Business longevity: 10%
   private static readonly WEIGHTS = {
     incomeStability: 0.25,
     incomeTrend: 0.20,
-    incomeDiversity: 0.15,
+    incomeDiversity: 0.10,
     documentationCompleteness: 0.15,
-    incomeLevel: 0.15,
+    incomeLevel: 0.20,
     accountAge: 0.10,
   };
 
@@ -156,6 +197,21 @@ export class LoanScoreService {
       overallScore
     );
 
+    // Generate loan program matches (from underwriting spec)
+    const programMatches = this.matchLoanPrograms(
+      profile,
+      overallScore,
+      documentationStatus
+    );
+
+    // Generate prioritized action plan
+    const actionPlan = this.generateActionPlan(
+      breakdown,
+      profile,
+      documentationStatus,
+      programMatches
+    );
+
     return {
       overallScore,
       letterGrade,
@@ -164,6 +220,8 @@ export class LoanScoreService {
       loanTypeThresholds: LoanScoreService.LOAN_THRESHOLDS,
       qualifiedLoanTypes,
       potentialLoanTypes,
+      programMatches,
+      actionPlan,
       calculatedAt: new Date(),
     };
   }
@@ -701,6 +759,251 @@ export class LoanScoreService {
       (principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths)) /
       (Math.pow(1 + monthlyRate, termMonths) - 1)
     );
+  }
+  /**
+   * Match borrower against loan programs (from underwriting spec)
+   * Evaluates eligibility for conventional, FHA, and Non-QM programs
+   */
+  private matchLoanPrograms(
+    profile: NormalizedIncomeProfile,
+    overallScore: number,
+    docs: DocumentationStatus
+  ): LoanProgramMatch[] {
+    const annualIncomeUSD = profile.annualizedProjection.finalProjection / 100;
+    const dti = profile.debtAnalysis.estimatedDTI;
+    const hasTaxReturns = docs.hasTaxReturns;
+    const has1099s = docs.has1099Forms;
+    const hasBankStatements = docs.hasBankStatements || docs.linkedBankAccounts > 0;
+    const monthsHistory = profile.monthsAnalyzed;
+
+    const programs: LoanProgramMatch[] = [];
+
+    // Conventional (Fannie/Freddie)
+    const convEligible = overallScore >= 75 && dti <= 45 && hasTaxReturns && monthsHistory >= 24;
+    programs.push({
+      program: 'CONVENTIONAL',
+      displayName: 'Conventional (Fannie/Freddie)',
+      eligible: convEligible,
+      likelihood: convEligible ? (overallScore >= 85 ? 'HIGH' : 'MODERATE') : (overallScore >= 60 ? 'LOW' : 'INELIGIBLE'),
+      estimatedRateRange: '6.5% - 7.5%',
+      minDownPayment: '5-20%',
+      minCreditScore: 620,
+      maxDTI: 45,
+      conditions: convEligible
+        ? ['2 years tax returns required', 'Form 1084 income calculation']
+        : ['DTI must be under 45%', '2 years tax returns required', 'Score 75+ recommended'],
+      unlockActions: !convEligible
+        ? [
+            ...(dti > 45 ? [`Reduce DTI from ${dti.toFixed(1)}% to under 45%`] : []),
+            ...(!hasTaxReturns ? ['Upload 2 years of tax returns'] : []),
+            ...(monthsHistory < 24 ? [`Build ${24 - monthsHistory} more months of income history`] : []),
+          ]
+        : [],
+    });
+
+    // FHA
+    const fhaEligible = overallScore >= 60 && dti <= 50 && hasTaxReturns;
+    programs.push({
+      program: 'FHA',
+      displayName: 'FHA Loan',
+      eligible: fhaEligible,
+      likelihood: fhaEligible ? (overallScore >= 75 ? 'HIGH' : 'MODERATE') : 'LOW',
+      estimatedRateRange: '6.0% - 7.0%',
+      minDownPayment: '3.5%',
+      minCreditScore: 580,
+      maxDTI: 50,
+      conditions: fhaEligible
+        ? ['Manual underwriting may be required for self-employed', 'MIP required']
+        : ['Tax returns required', 'DTI must be under 50%'],
+      unlockActions: !fhaEligible
+        ? [
+            ...(!hasTaxReturns ? ['Upload tax returns'] : []),
+            ...(dti > 50 ? [`Reduce DTI from ${dti.toFixed(1)}% to under 50%`] : []),
+          ]
+        : [],
+    });
+
+    // Non-QM Bank Statement
+    const bsEligible = hasBankStatements && monthsHistory >= 12;
+    programs.push({
+      program: 'NON_QM_BANK_STATEMENT',
+      displayName: 'Bank Statement Loan (Non-QM)',
+      eligible: bsEligible,
+      likelihood: bsEligible ? (monthsHistory >= 24 ? 'HIGH' : 'MODERATE') : 'LOW',
+      estimatedRateRange: '7.5% - 9.5%',
+      minDownPayment: '10-20%',
+      minCreditScore: 660,
+      maxDTI: 50,
+      conditions: [
+        '12-24 months bank statements',
+        '50% expense factor applied to deposits',
+        'No tax returns required',
+      ],
+      unlockActions: !bsEligible
+        ? [
+            ...(!hasBankStatements ? ['Link bank accounts or upload 12+ months of statements'] : []),
+            ...(monthsHistory < 12 ? [`Need ${12 - monthsHistory} more months of bank history`] : []),
+          ]
+        : [],
+    });
+
+    // Non-QM 1099-Only
+    const nqm1099Eligible = has1099s && annualIncomeUSD >= 40000;
+    programs.push({
+      program: 'NON_QM_1099_ONLY',
+      displayName: '1099-Only Program (Non-QM)',
+      eligible: nqm1099Eligible,
+      likelihood: nqm1099Eligible ? 'MODERATE' : 'LOW',
+      estimatedRateRange: '7.0% - 9.0%',
+      minDownPayment: '10-20%',
+      minCreditScore: 660,
+      maxDTI: 50,
+      conditions: [
+        '1099 forms used at 90-100% of gross income',
+        'No tax returns needed',
+        'Minimum 660 FICO',
+      ],
+      unlockActions: !nqm1099Eligible
+        ? [
+            ...(!has1099s ? ['Upload 1099-NEC forms from clients'] : []),
+            ...(annualIncomeUSD < 40000 ? ['Income must be at least $40,000/year'] : []),
+          ]
+        : [],
+    });
+
+    // Auto Standard
+    const autoEligible = overallScore >= 45 && dti <= 50 && monthsHistory >= 6;
+    programs.push({
+      program: 'AUTO_STANDARD',
+      displayName: 'Auto Loan (Standard)',
+      eligible: autoEligible,
+      likelihood: autoEligible ? (overallScore >= 65 ? 'HIGH' : 'MODERATE') : 'LOW',
+      estimatedRateRange: '5.5% - 12.0%',
+      minDownPayment: '0-20%',
+      minCreditScore: 600,
+      maxDTI: 50,
+      conditions: [
+        'Payment-to-income ratio under 15-20%',
+        '3-6 months bank statements may suffice',
+      ],
+      unlockActions: !autoEligible
+        ? [
+            ...(monthsHistory < 6 ? ['Build at least 6 months of income history'] : []),
+            ...(dti > 50 ? ['Reduce debt-to-income ratio'] : []),
+          ]
+        : [],
+    });
+
+    // Sort: eligible first, then by likelihood
+    const likelihoodOrder = { HIGH: 0, MODERATE: 1, LOW: 2, INELIGIBLE: 3 };
+    programs.sort((a, b) => {
+      if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+      return likelihoodOrder[a.likelihood] - likelihoodOrder[b.likelihood];
+    });
+
+    return programs;
+  }
+
+  /**
+   * Generate prioritized action plan with impact modeling (from underwriting spec)
+   */
+  private generateActionPlan(
+    breakdown: ScoreBreakdown,
+    profile: NormalizedIncomeProfile,
+    docs: DocumentationStatus,
+    _programMatches: LoanProgramMatch[]
+  ): ActionPlanItem[] {
+    const actions: ActionPlanItem[] = [];
+    let priority = 1;
+    const dti = profile.debtAnalysis.estimatedDTI;
+    const monthlyObligations = profile.debtAnalysis.totalMonthlyObligations / 100;
+    const monthlyIncome = profile.averageMonthlyIncome / 100;
+
+    // Documentation actions (fastest wins)
+    if (!docs.hasTaxReturns) {
+      actions.push({
+        priority: priority++,
+        action: 'Upload your most recent 2 years of tax returns (Form 1040 + Schedule C)',
+        impact: 'Unlocks Conventional and FHA programs; adds ~5-8 points to readiness score',
+        category: 'Documentation',
+        timeframe: 'Immediate',
+        programsUnlocked: ['CONVENTIONAL', 'FHA'],
+      });
+    }
+
+    if (!docs.has1099Forms) {
+      actions.push({
+        priority: priority++,
+        action: 'Upload all 1099-NEC forms from clients',
+        impact: 'Unlocks 1099-Only Non-QM program; strengthens income verification',
+        category: 'Documentation',
+        timeframe: 'Immediate',
+        programsUnlocked: ['NON_QM_1099_ONLY'],
+      });
+    }
+
+    if (docs.linkedBankAccounts === 0 && !docs.hasBankStatements) {
+      actions.push({
+        priority: priority++,
+        action: 'Link your primary bank account for real-time income verification',
+        impact: 'Unlocks Bank Statement loan programs; adds ~5 points to readiness score',
+        category: 'Documentation',
+        timeframe: 'Immediate',
+        programsUnlocked: ['NON_QM_BANK_STATEMENT'],
+      });
+    }
+
+    // DTI optimization (high impact)
+    if (dti > 43 && monthlyObligations > 0) {
+      const targetDTI = 43;
+      const neededReduction = ((dti - targetDTI) / 100) * monthlyIncome;
+      actions.push({
+        priority: priority++,
+        action: `Pay down $${Math.round(neededReduction * 12).toLocaleString()} in debt to reduce DTI from ${dti.toFixed(1)}% to ${targetDTI}%`,
+        impact: `Unlocks Conventional loan programs; saves 0.5-1.5% on rate`,
+        category: 'Debt Reduction',
+        timeframe: '1-6 months',
+        programsUnlocked: ['CONVENTIONAL'],
+      });
+    }
+
+    // Income stability
+    if (breakdown.incomeStability.rawScore < 70) {
+      actions.push({
+        priority: priority++,
+        action: 'Build more consistent monthly income by adding retainer-based or recurring clients',
+        impact: `Income stability score could improve from ${breakdown.incomeStability.rawScore} to 70+, adding ~${Math.round((70 - breakdown.incomeStability.rawScore) * 0.25)} points`,
+        category: 'Income Stability',
+        timeframe: '3-6 months',
+        programsUnlocked: [],
+      });
+    }
+
+    // Income diversification
+    if (profile.incomeSources.length <= 1) {
+      actions.push({
+        priority: priority++,
+        action: 'Add a secondary income source to demonstrate income resilience',
+        impact: 'Reduces lender risk perception; improves diversity score by ~15-25 points',
+        category: 'Income Diversity',
+        timeframe: '1-3 months',
+        programsUnlocked: [],
+      });
+    }
+
+    // History
+    if (profile.monthsAnalyzed < 24) {
+      actions.push({
+        priority: priority++,
+        action: `Continue building income history (${24 - profile.monthsAnalyzed} months to reach 24-month threshold)`,
+        impact: 'Full 2-year history required for Conventional; strengthens all applications',
+        category: 'History',
+        timeframe: `${24 - profile.monthsAnalyzed} months`,
+        programsUnlocked: ['CONVENTIONAL'],
+      });
+    }
+
+    return actions;
   }
 }
 

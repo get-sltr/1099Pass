@@ -506,6 +506,8 @@ function createMockLoanScore(): LoanReadinessScore {
     },
     qualifiedLoanTypes: ['PERSONAL', 'AUTO'],
     potentialLoanTypes: ['MORTGAGE'],
+    programMatches: [],
+    actionPlan: [],
     calculatedAt: new Date(),
   };
 }

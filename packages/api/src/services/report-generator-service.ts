@@ -10,7 +10,7 @@ import PDFDocument from 'pdfkit';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { NormalizedIncomeProfile, IncomeSource } from './income-normalization-service';
-import type { LoanReadinessScore, LetterGrade } from './loan-score-service';
+import type { LoanReadinessScore, LetterGrade, LoanProgramMatch, ActionPlanItem } from './loan-score-service';
 
 // Types
 export interface ReportMetadata {
@@ -106,10 +106,23 @@ export interface LenderReport {
     estimatedDTI: number;
     monthlyObligations: number;
     caveat: string;
+    /** DTI thresholds by program type */
+    programThresholds: {
+      conventional: number;
+      fha: number;
+      nonQM: number;
+      auto: number;
+    };
   };
 
   // Document Verification
   documentVerification: DocumentVerification[];
+
+  // Loan Program Matching (from underwriting spec Section 7)
+  programMatches: LoanProgramMatch[];
+
+  // Action Plan (from underwriting spec Section 8)
+  actionPlan: ActionPlanItem[];
 
   // Legal Disclaimer
   disclaimer: string;
@@ -135,7 +148,7 @@ export interface ShareAccess {
 }
 
 // Constants
-const REPORT_VERSION = '1.0.0';
+const REPORT_VERSION = '2.0.0';
 const REPORT_EXPIRY_DAYS = 90;
 const SHARE_TOKEN_EXPIRY_DAYS = 30;
 
@@ -285,9 +298,19 @@ export class ReportGeneratorService {
         estimatedDTI: incomeProfile.debtAnalysis.estimatedDTI,
         monthlyObligations: incomeProfile.debtAnalysis.totalMonthlyObligations,
         caveat: incomeProfile.debtAnalysis.caveat,
+        programThresholds: {
+          conventional: 45,
+          fha: 50,
+          nonQM: 55,
+          auto: 50,
+        },
       },
 
       documentVerification: documentStatus,
+
+      programMatches: loanScore.programMatches,
+
+      actionPlan: loanScore.actionPlan,
 
       disclaimer: LEGAL_DISCLAIMER,
     };
@@ -303,7 +326,7 @@ export class ReportGeneratorService {
         size: 'LETTER',
         margins: { top: 50, bottom: 50, left: 50, right: 50 },
         info: {
-          Title: `1099Pass Income Verification Report - ${report.metadata.reportId}`,
+          Title: `1099Pass Readiness Report - ${report.metadata.reportId}`,
           Author: '1099Pass',
           Subject: 'Income Verification Report',
           CreationDate: report.metadata.generatedAt,
@@ -344,6 +367,11 @@ export class ReportGeneratorService {
 
       // Document Verification
       this.renderDocumentVerification(doc, report);
+
+      // Page 3: Loan Program Matching & Action Plan
+      doc.addPage();
+      this.renderProgramMatches(doc, report);
+      this.renderActionPlan(doc, report);
 
       // Disclaimer (footer on last page)
       this.renderDisclaimer(doc, report);
@@ -452,14 +480,14 @@ export class ReportGeneratorService {
     doc
       .fontSize(24)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('1099Pass', 50, 50);
 
     doc
       .fontSize(10)
       .font('Helvetica')
       .fillColor('#666666')
-      .text('Income Verification Report', 50, 80);
+      .text('Readiness Report', 50, 80);
 
     // Report ID and dates on the right
     doc
@@ -494,7 +522,7 @@ export class ReportGeneratorService {
     doc
       .fontSize(14)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('Borrower Summary', 50, y);
 
     doc
@@ -515,7 +543,7 @@ export class ReportGeneratorService {
     doc
       .fontSize(14)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('Income Overview', 50, y);
 
     const annual = this.formatCurrency(report.incomeOverview.projectedAnnualIncome);
@@ -554,7 +582,7 @@ export class ReportGeneratorService {
     doc
       .fontSize(12)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('Income Verification Narrative', 50, y + 20);
     doc
       .fontSize(10)
@@ -570,7 +598,7 @@ export class ReportGeneratorService {
     doc
       .fontSize(14)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('Income Sources', 50, y);
 
     // Table header
@@ -623,7 +651,7 @@ export class ReportGeneratorService {
     doc
       .fontSize(14)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('Stability Metrics', 50, y);
 
     const metrics = report.stabilityMetrics;
@@ -669,7 +697,7 @@ export class ReportGeneratorService {
       doc
         .fontSize(12)
         .font('Helvetica-Bold')
-        .fillColor('#1E3A5F')
+        .fillColor('#0A1628')
         .text(item.value, 250, itemY);
 
       doc
@@ -688,7 +716,7 @@ export class ReportGeneratorService {
     doc
       .fontSize(14)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('Loan Readiness Score', 50, y);
 
     // Big score display
@@ -723,7 +751,7 @@ export class ReportGeneratorService {
     doc
       .fontSize(14)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('Debt-to-Income Estimate', 50, y);
 
     doc
@@ -754,7 +782,7 @@ export class ReportGeneratorService {
     doc
       .fontSize(14)
       .font('Helvetica-Bold')
-      .fillColor('#1E3A5F')
+      .fillColor('#0A1628')
       .text('Document Verification', 50, y);
 
     const startY = y + 25;
@@ -798,6 +826,127 @@ export class ReportGeneratorService {
       .text('DISCLAIMER', 50, y, { width: 510 })
       .moveDown(0.5)
       .text(report.disclaimer, { width: 510, align: 'justify' });
+  }
+
+  private renderProgramMatches(doc: PDFKit.PDFDocument, report: LenderReport): void {
+    let y = 50;
+
+    doc
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .fillColor('#0A1628')
+      .text('Loan Program Matching', 50, y);
+
+    y += 30;
+
+    for (const match of report.programMatches.slice(0, 5)) {
+      // Program header with eligibility badge
+      const badgeColor = match.eligible ? '#10B981' : match.likelihood === 'LOW' ? '#F59E0B' : '#9CA3AF';
+      const badgeText = match.eligible ? 'ELIGIBLE' : match.likelihood;
+
+      doc
+        .fontSize(11)
+        .font('Helvetica-Bold')
+        .fillColor('#333333')
+        .text(match.displayName, 50, y);
+
+      doc
+        .roundedRect(350, y - 2, 70, 16, 3)
+        .fill(badgeColor);
+      doc
+        .fontSize(8)
+        .font('Helvetica-Bold')
+        .fillColor('#FFFFFF')
+        .text(badgeText, 355, y + 1, { width: 60, align: 'center' });
+
+      y += 20;
+
+      doc
+        .fontSize(9)
+        .font('Helvetica')
+        .fillColor('#666666')
+        .text(`Rate: ${match.estimatedRateRange}  |  Down: ${match.minDownPayment}  |  Max DTI: ${match.maxDTI}%  |  Min Credit: ${match.minCreditScore}`, 50, y);
+
+      y += 15;
+
+      // Conditions
+      for (const condition of match.conditions.slice(0, 2)) {
+        doc
+          .fontSize(8)
+          .fillColor('#999999')
+          .text(`  • ${condition}`, 50, y);
+        y += 12;
+      }
+
+      // Unlock actions for ineligible programs
+      if (!match.eligible && match.unlockActions.length > 0) {
+        for (const action of match.unlockActions.slice(0, 2)) {
+          doc
+            .fontSize(8)
+            .fillColor('#C4652A')
+            .text(`  → ${action}`, 50, y);
+          y += 12;
+        }
+      }
+
+      y += 10;
+
+      // Don't overflow the page
+      if (y > 650) break;
+    }
+  }
+
+  private renderActionPlan(doc: PDFKit.PDFDocument, report: LenderReport): void {
+    const startY = Math.max((doc as { y?: number }).y ?? 400, 400);
+    let y = startY;
+
+    doc
+      .fontSize(14)
+      .font('Helvetica-Bold')
+      .fillColor('#0A1628')
+      .text('Action Plan', 50, y);
+
+    y += 25;
+
+    for (const item of report.actionPlan.slice(0, 5)) {
+      // Priority number
+      doc
+        .circle(62, y + 6, 10)
+        .fill('#FF6B00');
+      doc
+        .fontSize(10)
+        .font('Helvetica-Bold')
+        .fillColor('#FFFFFF')
+        .text(item.priority.toString(), 55, y + 1, { width: 15, align: 'center' });
+
+      // Action text
+      doc
+        .fontSize(10)
+        .font('Helvetica-Bold')
+        .fillColor('#333333')
+        .text(item.action, 80, y, { width: 470 });
+
+      const actionHeight = doc.heightOfString(item.action, { width: 470 });
+      y += actionHeight + 3;
+
+      // Impact
+      doc
+        .fontSize(8)
+        .font('Helvetica')
+        .fillColor('#666666')
+        .text(`Impact: ${item.impact}`, 80, y, { width: 470 });
+
+      y += 14;
+
+      // Timeframe and category
+      doc
+        .fillColor('#999999')
+        .text(`${item.category}  •  ${item.timeframe}`, 80, y);
+
+      y += 22;
+
+      if (y > 700) break;
+    }
   }
 
   // Helper methods

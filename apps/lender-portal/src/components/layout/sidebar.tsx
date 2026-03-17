@@ -62,7 +62,7 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex h-16 items-center border-b border-primary-800 px-4">
         <Link href="/dashboard" className="flex items-center gap-3">
-          <Image src="/logo.svg" alt="1099Pass" width={32} height={32} />
+          <Image src="/logo.svg" alt="1099Pass" width={40} height={40} />
           {!sidebarCollapsed && (
             <span className="text-lg font-semibold text-white">1099Pass</span>
           )}

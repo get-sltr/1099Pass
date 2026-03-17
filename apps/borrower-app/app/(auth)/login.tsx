@@ -3,7 +3,7 @@
  * Existing user authentication
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -33,9 +33,9 @@ export default function LoginScreen() {
   const [hasBiometrics, setHasBiometrics] = useState(false);
 
   // Check for biometric support
-  useState(() => {
+  useEffect(() => {
     LocalAuthentication.hasHardwareAsync().then(setHasBiometrics);
-  });
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
